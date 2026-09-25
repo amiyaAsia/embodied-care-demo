@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { analyzeTrajectory } from './motion.js';
-import { createState, respond, evaluateMotion } from './engine.js';
 
 const close = (actual, expected, tolerance = 1e-8) =>
   assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} ≈ ${expected}`);
@@ -20,7 +19,7 @@ function smooth({ fps = 60, before = 0, after = 0, jitter = false } = {}) {
   return result;
 }
 
-test('五秒平滑55%前伸回收给出正常节奏和良好engine分数', () => {
+test('五秒平滑往返轨迹给出正常节奏与平滑度', () => {
   const result = analyzeTrajectory(smooth());
   assert.equal(result.valid, true);
   close(result.amplitude, 55);
@@ -29,9 +28,6 @@ test('五秒平滑55%前伸回收给出正常节奏和良好engine分数', () =>
   assert.ok(result.hold > 1 && result.hold < 2);
   close(result.tempo + result.hold, result.duration);
   assert.ok(result.smoothness > 90);
-  let state = createState();
-  for (const action of ['explain', 'posture', 'slow', 'check']) state = respond(state, { action }).state;
-  assert.ok(evaluateMotion(state, result).metrics.score >= 75);
   assert.deepEqual(Object.keys(result).sort(),
     ['valid', 'amplitude', 'tempo', 'hold', 'smoothness', 'duration', 'activeStart', 'activeEnd'].sort());
 });

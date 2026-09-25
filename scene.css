@@ -1,12 +1,14 @@
 .care-scene {
   position: relative;
   isolation: isolate;
+  container-type: inline-size;
   width: 100%;
   height: 100%;
   min-height: 300px;
   overflow: hidden;
-  background: #e8eee5;
-  color: #285e57;
+  background: #ecece0;
+  border-radius: 18px;
+  color: #38675d;
   font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
@@ -20,153 +22,192 @@
   -webkit-user-select: none;
 }
 
-.care-scene .care-scene-name rect {
-  fill: #fffdf3;
-  fill-opacity: .94;
-  stroke: #c4d9cb;
-  stroke-width: 1;
+.care-scene .care-scene-room-label {
+  fill: #7b8873;
+  font-size: 13px;
+  letter-spacing: 2px;
 }
 
-.care-scene .care-scene-name circle { fill: #287c74; }
+.care-scene .care-scene-name rect {
+  fill: #fffdf3;
+  fill-opacity: .95;
+  stroke: #d1dac6;
+  stroke-width: 1;
+}
+.care-scene .care-scene-name circle { fill: #4e8978; }
 .care-scene .care-scene-name text {
-  fill: #2d645c;
-  font-size: 16px;
+  fill: #396b5e;
+  font-size: 14px;
   font-weight: 600;
   text-anchor: middle;
-  letter-spacing: .3px;
+  letter-spacing: .4px;
 }
-.care-scene .care-scene-name-elder circle { fill: #9983a9; }
-.care-scene .care-scene-name-elder text { fill: #72607f; }
+.care-scene .care-scene-name-elder circle { fill: #a3889b; }
+.care-scene .care-scene-name-elder text { fill: #806c7c; }
+
+.care-scene .care-scene-bed,
+.care-scene .care-scene-bedding,
+.care-scene .care-scene-table { pointer-events: none; }
+.care-scene .care-scene-bed-label rect {
+  fill: #f2f5e9;
+  stroke: #bacfc0;
+  fill-opacity: .96;
+}
+.care-scene .care-scene-bed-label text,
+.care-scene .care-scene-cart-label {
+  fill: #56776a;
+  font-size: 11px;
+  letter-spacing: .6px;
+}
+.care-scene .care-scene-cart-label {
+  paint-order: stroke;
+  stroke: #f5f4e7;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+/* SVG transforms are synchronous with the host's posture animation and IK.
+   CSS transform transitions would make the mouth drift away from the spoon. */
+.care-scene [data-part="bed-back"],
+.care-scene [data-person="elder"] [data-part="body"],
+.care-scene [data-person="elder"] [data-part="head"],
+.care-scene [data-part="pillow"] { transition: none; }
+.care-scene .care-scene-arm { pointer-events: none; }
+.care-scene [data-person],
+.care-scene [data-part="spoon"],
+.care-scene [data-part="grip"],
+.care-scene .care-scene-name { pointer-events: none; }
 
 .care-scene .care-scene-guides,
 .care-scene .care-scene-trail,
-.care-scene .care-scene-feet,
-.care-scene .care-scene-drag-caption { pointer-events: none; }
-
+.care-scene .care-scene-stage { pointer-events: none; }
 .care-scene .care-scene-target {
   fill: none;
-  stroke: #287c74;
-  stroke-width: 2;
-  stroke-dasharray: 5 7;
-  opacity: .46;
-}
-.care-scene .care-scene-goal {
-  fill: #f8fff6;
-  fill-opacity: .38;
-  stroke: #287c74;
-  stroke-width: 1.8;
-  stroke-dasharray: 3 4;
-  opacity: .7;
+  stroke: #507f6f;
+  stroke-width: 1.7;
+  stroke-dasharray: 4 7;
+  opacity: .47;
 }
 .care-scene .care-scene-bones {
   fill: none;
-  stroke: #f2ffe8;
+  stroke: #f2fae8;
   stroke-width: 1.5;
   stroke-dasharray: 3 5;
-  opacity: .6;
+   opacity: .45;
 }
 .care-scene .care-scene-guides [data-joint] {
-  fill: #f2fff4;
-  fill-opacity: .9;
-  stroke: #287c74;
-  stroke-width: 2;
+  fill: #f8ffeb;
+  fill-opacity: .85;
+  stroke: #487e6c;
+  stroke-width: 1.7;
+}
+.care-scene .care-scene-guides text {
+  fill: #577969;
+  font-size: 11px;
+  letter-spacing: .5px;
+  paint-order: stroke;
+  stroke: #f2f0e4;
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+.care-scene .care-scene-stop {
+  fill: none;
+  stroke: #a28352;
+  stroke-width: 1.6;
+  opacity: .75;
 }
 .care-scene .care-scene-trail {
   fill: none;
-  stroke: #62a79b;
-  stroke-width: 3;
+  stroke: #b58a49;
+  stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: .45;
-}
-.care-scene [data-person="elder"] .care-scene-trail { stroke: #a48bbb; }
-.care-scene [data-person="elder"] .care-scene-target,
-.care-scene [data-person="elder"] .care-scene-goal,
-.care-scene [data-person="elder"] .care-scene-guides [data-joint] { stroke: #8b719f; }
-.care-scene .care-scene-feet ellipse {
-  fill: #287c74;
-  fill-opacity: .05;
-  stroke: #287c74;
-  stroke-width: 1.5;
-  stroke-dasharray: 4 4;
-  opacity: .55;
+  opacity: .42;
 }
 
-.care-scene .care-scene-drag {
-  cursor: grab;
-  touch-action: none;
-  outline: none;
-}
-.care-scene .care-scene-hit {
-  fill: #fff;
-  fill-opacity: .001;
-  stroke: transparent;
-  stroke-width: 20;
-  pointer-events: all;
-}
+.care-scene .care-scene-drag { cursor: grab; touch-action: none; outline: none; }
+.care-scene .care-scene-hit { fill: transparent; stroke: transparent; stroke-width: 12; pointer-events: all; }
 .care-scene .care-scene-drag-ring {
   fill: none;
-  stroke: #287c74;
-  stroke-width: 2;
+  stroke: #477c69;
+  stroke-width: 1.7;
   stroke-dasharray: 3 5;
-  opacity: .7;
+   opacity: .42;
   pointer-events: none;
 }
 .care-scene .care-scene-drag-arrows {
   fill: none;
-  stroke: #287c74;
-  stroke-width: 2.5;
+  stroke: #477c69;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  opacity: .75;
+  opacity: .65;
   pointer-events: none;
 }
 .care-scene .care-scene-drag:hover .care-scene-drag-ring,
 .care-scene .care-scene-drag:focus-visible .care-scene-drag-ring,
 .care-scene.care-scene-selected .care-scene-drag-ring,
 .care-scene.care-scene-dragging .care-scene-drag-ring {
-  stroke-width: 3;
+  stroke-width: 2.6;
   stroke-dasharray: none;
   opacity: 1;
 }
-.care-scene .care-scene-drag:focus-visible .care-scene-hit {
-  stroke: #287c74;
-  stroke-width: 2;
-}
+.care-scene .care-scene-drag:focus-visible .care-scene-hit { stroke: #f8fff0; stroke-width: 3; }
 .care-scene.care-scene-dragging .care-scene-drag { cursor: grabbing; }
-.care-scene .care-scene-drag-caption path { stroke: #69958a; stroke-width: 1.5; fill: none; }
-.care-scene .care-scene-drag-caption text { fill: #517d71; font-size: 13px; }
-.care-scene[data-phase="hold"] .care-scene-goal { fill: #b7d9bd; fill-opacity: .5; stroke-dasharray: none; }
-.care-scene[data-phase="rest"] .care-scene-target { opacity: .2; }
+.care-scene .care-scene-drag[aria-disabled="true"] { cursor: default; pointer-events: none; }
+.care-scene .care-scene-drag[aria-disabled="true"] .care-scene-hit { pointer-events: none; }
+.care-scene.care-scene-disabled .care-scene-drag-ring,
+.care-scene.care-scene-disabled .care-scene-drag-arrows { opacity: 0; }
 
+.care-scene .care-scene-stage rect { fill: #fbf9ed; fill-opacity: .88; stroke: #d4d8c5; }
+.care-scene .care-scene-stage circle { fill: #719681; }
+.care-scene .care-scene-stage text { font-size: 12px; fill: #6c7b69; }
+.care-scene .care-scene-stage [data-part="phase-label"] { font-weight: 700; fill: #3c6d5c; font-size: 13px; }
+.care-scene[data-phase="wait"] .care-scene-stop { stroke: #a47838; stroke-width: 2.5; }
+.care-scene[data-phase="accept"] .care-scene-stop { stroke: #638b68; }
+.care-scene[data-phase="rest"] .care-scene-target { opacity: .23; }
+.care-scene[data-phase="position"] .care-scene-stage rect { fill: #edf3e6; stroke: #afc7b3; }
+.care-scene[data-phase="position"] .care-scene-stage circle { fill: #9b805a; }
+.care-scene[data-positioned="false"] .care-scene-stop { stroke: #ab8051; stroke-width: 2; }
+.care-scene[data-phase="position"] .care-scene-target { opacity: .2; }
+
+/* A separate bottom band keeps even long speech away from faces and wrists.
+   It also works in a narrow container whose SVG has vertical letterboxing. */
 .care-scene .care-scene-feedback {
   position: absolute;
   z-index: 1;
   left: 50%;
-  bottom: 3%;
+  bottom: 1.5%;
   transform: translateX(-50%);
   box-sizing: border-box;
   display: flex;
   align-items: baseline;
   gap: 10px;
   width: max-content;
-  max-width: calc(100% - 32px);
-  max-height: 15%;
+  max-width: calc(100% - 28px);
+  max-height: 11%;
   overflow: auto;
-  padding: 10px 18px;
-  border: 1px solid #c5d8cc;
-  border-radius: 16px;
-  background: #fffff5f2;
-  box-shadow: 0 4px 18px #35594a0d;
-  font-size: clamp(12px, 1.15vw, 15px);
-  line-height: 1.5;
+  overscroll-behavior: contain;
+  padding: 7px 15px;
+  border: 1px solid #cdd6c3;
+  border-radius: 13px;
+  background: #fffdf2f5;
+  border-left: 3px solid #87a88e;
+  box-shadow: 0 3px 14px #46583a0c;
+  font-size: clamp(11px, 1.6cqw, 14px);
+  line-height: 1.45;
+  scrollbar-width: thin;
 }
 .care-scene .care-scene-feedback[hidden],
 .care-scene .care-scene-feedback-speaker[hidden] { display: none; }
-.care-scene .care-scene-feedback-speaker { flex: 0 0 auto; color: #287c74; font-weight: 700; }
+.care-scene .care-scene-feedback-speaker { flex: 0 0 auto; color: #427d69; font-weight: 700; }
 .care-scene .care-scene-feedback-text { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.care-scene .care-scene-feedback[data-speaker="elder"] .care-scene-feedback-speaker { color: #877095; }
+.care-scene .care-scene-feedback[data-speaker="elder"] .care-scene-feedback-speaker { color: #8c7084; }
 
-@media (max-width: 600px) {
-  .care-scene .care-scene-feedback { gap: 6px; padding: 6px 10px; border-radius: 10px; bottom: 2%; }
+@container (max-width: 520px) {
+  .care-scene .care-scene-feedback { gap: 6px; padding: 5px 9px; border-radius: 9px; max-width: calc(100% - 14px); }
+}
+
+@media (forced-colors: active) {
+  .care-scene .care-scene-drag:focus-visible .care-scene-hit { stroke: Highlight; }
+  .care-scene .care-scene-feedback { border-color: CanvasText; }
 }

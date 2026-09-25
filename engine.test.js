@@ -1,18 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createState, respond, evaluateMotion, INITIAL_MESSAGE, INITIAL_SUGGESTIONS, SCENARIO,
+  createState, respond, evaluateFeeding, INITIAL_MESSAGE, INITIAL_SUGGESTIONS, SCENARIO,
 } from './engine.js';
 
-const adapted = { amplitude: 55, tempo: 4.5, hold: 1.2, smoothness: 90, source: 'drag' };
-const poor = { amplitude: 95, tempo: 1.5, hold: 4, smoothness: 25, source: 'preset' };
-const prepare = () => {
-  let state = createState();
-  for (const action of ['explain', 'posture', 'slow', 'check']) {
-    state = respond(state, { action }).state;
-  }
-  return state;
-};
+const good = { portion: 30, pace: 4, pause: 2, source: 'drag', steady: 90 };
+const prepare = () => ['explain', 'position', 'listen', 'choice']
+  .reduce((state, action) => respond(state, { action }).state,
+    respond(createState(), { text: '确认温度合适' }).state);
+const emptyEvidence = () => ({ negative: false, explain: false, position: false,
+  listen: false, choice: false, check: false, rest: false });
 function freeze(value) {
   if (value && typeof value === 'object') {
     Object.values(value).forEach(freeze);
@@ -20,325 +17,457 @@ function freeze(value) {
   }
   return value;
 }
+function unit(value) { assert.ok(Number.isFinite(value) && value >= 0 && value <= 1); }
 
-test('initial state and public scenario are ready for a seated imitation demo', () => {
-  const state = createState();
-  assert.deepEqual([state.turn, state.stage, state.trust, state.fatigue,
-    state.comprehension, state.comfort, state.rounds, state.bestScore, state.latestMotion],
-  [0, 'observe', 45, 22, 35, 58, 0, 0, null]);
-  assert.deepEqual(state.skills, { explain: false, posture: false, pacing: false, check: false });
-  assert.equal(state.completed, false);
-  assert.deepEqual(state.history, []);
+test('exact initial state and public scenario', () => {
+  assert.deepEqual(createState(), {
+    turn: 0, stage: 'observe', trust: 30, agitation: 78, comfort: 35, readiness: 15,
+    bites: 0, attempts: 0,
+    skills: { explain: false, position: false, listen: false, choice: false, check: false },
+    flags: { consent: false, refusal: true, swallowing: false, temperatureResolved: false },
+    history: [], latestFeeding: null, completed: false,
+  });
+  assert.match(INITIAL_MESSAGE, /太烫了，别催我/);
   assert.equal(INITIAL_SUGGESTIONS.length, 3);
-  assert.ok(INITIAL_MESSAGE.length >= 15);
-  for (const key of ['name', 'age', 'title', 'brief']) assert.ok(SCENARIO[key]);
-  state.skills.explain = true;
-  state.flags.needsRest = true;
-  assert.equal(createState().skills.explain, false);
-  assert.equal(createState().flags.needsRest, false);
+  assert.match(SCENARIO.brief, /已确认适合的软食/);
+  const state = createState();
+  state.skills.listen = true;
+  state.history.push({});
+  assert.equal(createState().skills.listen, false);
+  assert.deepEqual(createState().history, []);
 });
 
-test('dialogue and motion do not mutate frozen inputs, including nested history', () => {
-  const original = freeze(prepare());
-  const snapshot = JSON.stringify(original);
-  const first = evaluateMotion(original, adapted);
-  const frozenMotion = freeze(first.state);
-  const dialogue = respond(frozenMotion, { action: 'rest' });
-  const next = evaluateMotion(frozenMotion, adapted);
-  assert.equal(JSON.stringify(original), snapshot);
-  assert.notEqual(dialogue.state.history, frozenMotion.history);
-  assert.notEqual(next.state.latestMotion, frozenMotion.latestMotion);
-  dialogue.state.history.at(-2).metrics.score = -1;
-  assert.ok(frozenMotion.history.at(-1).metrics.score >= 0);
+test('initial feeding always refuses, even ideal settings and zero portion', () => {
+  for (const portion of [0, 20, 45, 100]) {
+    const result = evaluateFeeding(createState(), { portion, pace: 6, pause: 5, steady: 100 });
+    assert.equal(result.metrics.accepted, false);
+    assert.equal(result.state.bites, 0);
+    assert.equal(result.view.opening, 0);
+    assert.equal(result.view.handBlock, 1);
+    assert.match(result.behavior, /转头、抿嘴、抬手/);
+    assert.match(result.behavior, /未入口/);
+    assert.equal(result.state.flags.swallowing, false);
+  }
 });
 
-test('Chinese explanations, consent, posture, pacing and checks recognize intent', () => {
-  let state = respond(createState(), { text: '我示范手臂向前伸，停一下再收回来，可以吗？' }).state;
-  assert.equal(state.skills.explain, true);
+test('natural positive multi-turn dialogue prepares and obtains consent', () => {
+  let state = createState();
+  for (const text of [
+    '我知道您不想吃，是什么原因，温度太烫了吗？',
+    '先少一点，确认温度合适再喂，您随时可以停。',
+    '先抬高床头，整理靠枕，让您靠舒服些。',
+    '您想自己吃还是我帮您？愿意先试一小口吗？',
+  ]) state = respond(state, { text }).state;
+  for (const key of ['explain', 'position', 'listen', 'choice']) assert.equal(state.skills[key], true, key);
   assert.equal(state.flags.consent, true);
-  state = respond(state, { text: '坐稳，双脚落地，肩膀放松。' }).state;
-  state = respond(state, { text: '慢一点跟我，缩小幅度。' }).state;
-  state = respond(state, { text: '现在感受怎么样，有没有疼？' }).state;
-  assert.deepEqual(state.skills, { explain: true, posture: true, pacing: true, check: true });
-  assert.ok(state.comprehension > 35);
-});
-
-test('pressure increases fatigue and lowers comfort; negative intent takes priority', () => {
-  const before = createState();
-  for (const text of ['快点跟上', '必须做，强迫也得做', '再高一点', '忍着疼继续']) {
-    const { state, reply } = respond(before, { text, action: 'encourage' });
-    assert.ok(state.fatigue > before.fatigue, text);
-    assert.ok(state.comfort < before.comfort, text);
-    assert.ok(state.trust < before.trust, text);
-    assert.deepEqual(state.skills, before.skills);
-    assert.match(reply, /跟不上|酸|停|紧张/);
-    assert.equal(state.stage, 'adapt');
-  }
-});
-
-test('rest and stopping for soreness reduce fatigue without treating caution as pressure', () => {
-  const tired = evaluateMotion(prepare(), poor).state;
-  for (const input of [{ action: 'rest' }, { text: '手臂酸累就停，休息一下，不要忍痛。' }]) {
-    const result = respond(tired, input);
-    assert.ok(result.state.fatigue < tired.fatigue);
-    assert.ok(result.state.comfort > tired.comfort);
-    assert.equal(result.state.flags.negative, false);
-    assert.match(result.reply, /休息|歇|放下/);
-  }
-});
-
-test('unknown text and invalid actions do not award skills or numeric rewards', () => {
-  const before = createState();
-  for (const input of [{ text: '今天天气不错' }, { text: '' }, { action: 'teleport' }, {}]) {
-    const { state } = respond(before, input);
-    assert.deepEqual(state.skills, before.skills);
-    for (const key of ['trust', 'fatigue', 'comfort', 'comprehension']) {
-      assert.equal(state[key], before[key]);
-    }
-    assert.equal(state.turn, 1);
-    assert.equal(state.rounds, 0);
-  }
-});
-
-test('adapted motion beats excessive, fast and jerky demonstration', () => {
-  const state = prepare();
-  const good = evaluateMotion(state, adapted);
-  const bad = evaluateMotion(state, poor);
-  assert.ok(good.metrics.score >= 75);
-  assert.ok(good.metrics.score > bad.metrics.score + 20);
-  assert.ok(good.metrics.matching > bad.metrics.matching);
-  assert.ok(good.metrics.compensation < bad.metrics.compensation);
-  assert.ok(good.metrics.lag < bad.metrics.lag);
-  assert.ok(good.view.tremor < bad.view.tremor);
-  assert.ok(bad.state.fatigue > good.state.fatigue);
-  assert.match(bad.reply, /跟不上|酸|肩|倾/);
-  assert.equal(bad.state.stage, 'adapt');
-});
-
-test('posture preparation reduces compensation, rough movement reduces score', () => {
-  const before = createState();
-  const after = respond(before, { action: 'posture' }).state;
-  assert.ok(evaluateMotion(after, adapted).metrics.compensation
-    < evaluateMotion(before, adapted).metrics.compensation);
-  assert.ok(evaluateMotion(after, { ...adapted, smoothness: 10 }).metrics.score
-    < evaluateMotion(after, adapted).metrics.score);
-});
-
-test('all dialogue skills alone cannot complete training', () => {
-  let state = prepare();
-  for (let index = 0; index < 5; index++) state = respond(state, { action: 'encourage' }).state;
+  assert.ok(state.agitation < 55);
+  assert.ok(state.trust > 30);
+  assert.equal(state.stage, 'ready');
   assert.equal(state.completed, false);
-  assert.equal(state.rounds, 0);
-  assert.equal(state.stage, 'prepare');
+  assert.equal(evaluateFeeding(state, good).metrics.accepted, true);
 });
 
-test('full flow completes after two suitable motions, and allows continued practice', () => {
-  let state = prepare();
-  state = evaluateMotion(state, adapted).state;
-  assert.equal(state.completed, false);
-  assert.equal(state.stage, 'practice');
-  state = evaluateMotion(state, adapted).state;
-  assert.equal(state.completed, true);
-  assert.equal(state.stage, 'completed');
-  assert.equal(state.rounds, 2);
-  assert.ok(state.latestMotion.metrics.score >= 75);
-  const best = state.bestScore;
-  state = evaluateMotion(state, poor).state;
-  assert.equal(state.rounds, 3);
-  assert.equal(state.completed, false);
-  assert.equal(state.stage, 'adapt');
-  assert.equal(state.bestScore, best);
-});
-
-test('completion requires each required skill, a current good score and low fatigue', () => {
-  const ready = evaluateMotion(evaluateMotion(prepare(), adapted).state, adapted).state;
-  for (const key of ['explain', 'posture', 'check']) {
-    const state = { ...ready, skills: { ...ready.skills, [key]: false } };
-    assert.equal(respond(state, { text: '嗯' }).state.completed, false);
+test('listening gradually reveals temperature, large spoon, autonomy and noise', () => {
+  let state = createState();
+  const replies = [];
+  for (let i = 0; i < 4; i++) {
+    const result = respond(state, { action: 'listen' });
+    state = result.state;
+    replies.push(result.reply);
   }
-  assert.equal(respond({ ...ready, fatigue: 75 }, {}).state.completed, false);
-  assert.equal(evaluateMotion(ready, poor).state.completed, false);
+  assert.match(replies[0], /太烫了，别催我/);
+  assert.match(replies[1], /勺太大/);
+  assert.match(replies[2], /想自己吃/);
+  assert.match(replies[3], /太吵/);
+  assert.equal(new Set(replies).size, 4);
 });
 
-test('fatigue accumulates across practice and rest enables recovery', () => {
-  let state = prepare();
-  const initial = state.fatigue;
-  for (let index = 0; index < 12; index++) state = evaluateMotion(state, adapted).state;
-  assert.ok(state.fatigue > initial);
-  const tiredScore = evaluateMotion(state, adapted).metrics.score;
-  state = respond(state, { action: 'rest' }).state;
-  assert.ok(evaluateMotion(state, adapted).metrics.score > tiredScore);
-});
-
-test('motion and state values clamp safely, including non-finite or absent parameters', () => {
-  for (const motion of [
-    { amplitude: 999, tempo: -3, hold: 99, smoothness: -5 },
-    { amplitude: -100, tempo: 99, hold: -3, smoothness: 999 },
-    { amplitude: NaN, tempo: Infinity, hold: -Infinity, smoothness: 'bad' },
-    {},
+test('negated positive instructions do not reward keywords', () => {
+  for (const text of [
+    '不用坐稳，也不用抬起床头', '床头不要抬起', '不要少一点和慢慢来',
+    '不用解释软食进食过程', '解释软食是不需要的', '别问温度怎么样',
+    '不要问吞完了吗，也不用问舒服吗', '不用休息或暂停',
+    '不要给选择，不用问愿意试试吗', '我不理解您不想吃',
   ]) {
-    const result = evaluateMotion(createState(), motion);
-    for (const key of ['score', 'matching', 'compensation', 'amplitude']) {
-      assert.ok(result.metrics[key] >= 0 && result.metrics[key] <= 100, key);
+    const result = respond(createState(), { text });
+    assert.deepEqual(result.evidence, emptyEvidence(), text);
+    assert.deepEqual(result.state.skills, createState().skills, text);
+    assert.equal(result.state.agitation, 78, text);
+    assert.equal(result.state.flags.consent, false, text);
+  }
+});
+
+test('pressure overrides every shortcut and revokes consent', () => {
+  for (const text of ['快点吃', '必须张嘴', '强喂也得吃', '强行入口', '忍着烫吃下去',
+    '别管她不想吃，赶紧喂', '坐稳慢慢来，但不吃也得吃', '我就催你吃']) {
+    for (const action of ['none', 'explain', 'position', 'listen', 'choice', 'check', 'rest']) {
+      const before = prepare();
+      const result = respond(before, { text, action });
+      assert.deepEqual(result.evidence, { ...emptyEvidence(), negative: true }, text);
+      assert.ok(result.state.agitation > before.agitation, text);
+      assert.ok(result.state.trust < before.trust, text);
+      assert.equal(result.state.flags.consent, false);
+      assert.equal(evaluateFeeding(result.state, good).metrics.accepted, false);
     }
-    assert.ok(result.metrics.tempo >= 1.5 && result.metrics.tempo <= 8);
-    assert.ok(result.metrics.hold >= 0 && result.metrics.hold <= 4);
-    for (const key of ['maxReach', 'compensation', 'tremor']) {
-      assert.ok(result.view[key] >= 0 && result.view[key] <= 1, key);
+  }
+});
+
+test('protective prohibitions and acknowledging refusal are not coercion', () => {
+  for (const text of ['不要强喂，先休息', '不用忍着烫，先暂停', '不催您，少一点慢慢来',
+    '不会强迫您，您愿意试一口吗？', '不要强行入口，您不想吃我们就暂停']) {
+    const result = respond(createState(), { text });
+    assert.equal(result.evidence.negative, false, text);
+    assert.ok(result.state.agitation <= 78, text);
+  }
+  assert.equal(respond(createState(), { text: '我理解您烦躁，现在不想吃。' }).evidence.listen, true);
+  const result = respond(createState(), { text: '不用喂，但请坐稳。您舒不舒服？' });
+  assert.equal(result.evidence.position, true);
+  assert.equal(result.evidence.check, true);
+});
+
+test('explicit actions are fixed shortcuts unless coercive text overrides them', () => {
+  for (const action of ['explain', 'position', 'listen', 'choice', 'check', 'rest']) {
+    const result = respond(createState(), { text: '不用做这些', action });
+    assert.equal(result.evidence[action], true, action);
+  }
+  const state = prepare();
+  assert.equal(state.flags.consent, true);
+  assert.equal(state.stage, 'ready');
+});
+
+test('consent needs preparation and a request; early request is not banked', () => {
+  let state = respond(createState(), { action: 'choice' }).state;
+  assert.equal(state.flags.consent, false);
+  state = respond(state, { text: '已经放凉' }).state;
+  for (const action of ['listen', 'position', 'explain']) state = respond(state, { action }).state;
+  assert.equal(state.flags.consent, false);
+  assert.equal(evaluateFeeding(state, good).metrics.accepted, false);
+  for (const text of ['不愿意', '不用问愿意试一口吗', '您已经同意了']) {
+    assert.equal(respond(state, { text }).state.flags.consent, false, text);
+  }
+  assert.equal(respond(state, { text: '您愿意试一小口吗？' }).state.flags.consent, true);
+});
+
+test('every preparation gate and the strict agitation threshold are required', () => {
+  const ready = prepare();
+  for (const key of ['explain', 'position', 'listen', 'choice']) {
+    const state = { ...ready, skills: { ...ready.skills, [key]: false } };
+    assert.equal(evaluateFeeding(state, good).metrics.accepted, false, key);
+  }
+  assert.equal(evaluateFeeding({ ...ready, agitation: 55 }, good).metrics.accepted, false);
+  assert.equal(evaluateFeeding({ ...ready, agitation: 54.99 }, good).metrics.accepted, true);
+  assert.equal(evaluateFeeding({ ...ready, flags: { ...ready.flags, consent: false } }, good).metrics.accepted, false);
+});
+
+test('portion, pace and pause individually reject at exact boundaries', () => {
+  const ready = prepare();
+  const edge = { ...good, portion: 45, pace: 2.8, pause: 1.5 };
+  assert.equal(evaluateFeeding(ready, edge).metrics.accepted, true);
+  for (const params of [{ portion: 45.001 }, { pace: 2.799 }, { pause: 1.499 }]) {
+    const result = evaluateFeeding(ready, { ...edge, ...params });
+    assert.equal(result.metrics.accepted, false);
+    assert.equal(result.view.opening, 0);
+    assert.equal(result.state.flags.consent, false);
+  }
+});
+
+test('poor parameters raise pressure and lower process quality', () => {
+  const ready = prepare();
+  const better = evaluateFeeding(ready, good);
+  const poor = evaluateFeeding(ready, { portion: 95, pace: 1, pause: 0, steady: 0 });
+  assert.ok(poor.metrics.pressure > better.metrics.pressure);
+  assert.ok(poor.metrics.score < better.metrics.score);
+  assert.ok(poor.metrics.acceptance < better.metrics.acceptance);
+  assert.ok(poor.state.agitation > better.state.agitation);
+  assert.match(poor.reply, /太大/);
+});
+
+test('refusal can be repaired through listening and renewed choice', () => {
+  let state = evaluateFeeding(prepare(), { ...good, portion: 90 }).state;
+  assert.equal(state.flags.refusal, true);
+  state = respond(state, { action: 'listen' }).state;
+  state = respond(state, { action: 'choice' }).state;
+  const result = evaluateFeeding(state, good);
+  assert.equal(result.metrics.accepted, true);
+  assert.equal(result.state.attempts, 2);
+  assert.equal(result.state.bites, 1);
+});
+
+test('acceptance starts waiting; swallowing is never measured or auto-ended', () => {
+  const result = evaluateFeeding(prepare(), good);
+  assert.equal(result.state.flags.swallowing, true);
+  assert.equal(result.state.stage, 'swallowing');
+  assert.match(result.state.history.at(-1).coach, /等待吞咽/);
+  assert.doesNotMatch(result.reply, /已吞完|已经咽完|检测/);
+  const check = respond(result.state, { action: 'check' });
+  assert.equal(check.state.flags.swallowing, true);
+  const premature = evaluateFeeding(result.state, good);
+  assert.equal(premature.metrics.accepted, false);
+  assert.equal(premature.state.bites, 1);
+  assert.match(premature.reply, /慢慢咽/);
+});
+
+test('completion requires a success followed by check and records its feeding turn', () => {
+  let state = respond(prepare(), { action: 'check' }).state;
+  assert.equal(state.completed, false);
+  state = evaluateFeeding(state, good).state;
+  assert.equal(state.completed, false);
+  assert.equal(respond(state, { text: '今天天气不错' }).state.completed, false);
+  const result = respond(state, { text: '您吞完了吗，现在舒服吗？' });
+  assert.equal(result.state.completed, true);
+  assert.equal(result.state.stage, 'completed');
+  assert.equal(result.state.history.at(-1).afterFeedingTurn, state.latestFeeding.turn);
+  assert.equal(result.state.history.at(-1).evidence.check, true);
+  assert.equal(respond(state, { text: '不要问吞完了吗' }).state.completed, false);
+  assert.equal(respond(result.state, { text: '必须继续吃' }).state.completed, false);
+});
+
+test('checks after refusals do not complete; later attempts require a fresh post-check', () => {
+  const refused = evaluateFeeding(prepare(), { ...good, pace: 1 }).state;
+  assert.equal(respond(refused, { action: 'check' }).state.completed, false);
+  let state = respond(evaluateFeeding(prepare(), good).state, { action: 'check' }).state;
+  // The host owns the animation end; the engine has no timers or real sensing.
+  state = { ...state, flags: { ...state.flags, swallowing: false } };
+  const next = evaluateFeeding(state, good);
+  assert.equal(next.metrics.accepted, true);
+  assert.equal(next.state.completed, false);
+  assert.equal(next.state.bites, 2);
+  assert.equal(respond(next.state, { action: 'check' }).state.completed, true);
+});
+
+test('no meal-volume score and steady/source cannot bypass refusal', () => {
+  const ready = prepare();
+  assert.equal(evaluateFeeding(ready, good).metrics.score,
+    evaluateFeeding({ ...ready, bites: 100, attempts: 200 }, good).metrics.score);
+  assert.equal(evaluateFeeding(ready, { ...good, portion: 10 }).metrics.score,
+    evaluateFeeding(ready, { ...good, portion: 40 }).metrics.score);
+  for (const source of ['preset', 'drag']) {
+    assert.equal(evaluateFeeding(createState(), { ...good, source, steady: 100 }).metrics.accepted, false);
+  }
+  assert.ok(evaluateFeeding(ready, { ...good, steady: 10 }).metrics.pressure
+    > evaluateFeeding(ready, { ...good, steady: 100 }).metrics.pressure);
+});
+
+test('rest calms but does not grant consent; unknown input earns no rewards', () => {
+  const result = respond(prepare(), { action: 'rest' });
+  assert.ok(result.state.agitation < prepare().agitation);
+  assert.equal(result.state.flags.consent, false);
+  for (const input of [{}, { action: 'teleport' }, { text: null }, { text: '你好' }]) {
+    const result = respond(createState(), input);
+    assert.deepEqual(result.evidence, emptyEvidence());
+    assert.equal(result.state.agitation, 78);
+    assert.equal(result.state.trust, 30);
+    assert.equal(result.state.turn, 1);
+  }
+});
+
+test('parameters, indicators and view values clamp including invalid values', () => {
+  for (const params of [{ portion: 999, pace: -3, pause: 99, steady: -5 },
+    { portion: -999, pace: 99, pause: -5, steady: 999 },
+    { portion: NaN, pace: Infinity, pause: -Infinity, steady: 'bad', source: 'bad' }, {}]) {
+    const result = evaluateFeeding(createState(), params);
+    for (const key of ['score', 'acceptance', 'pressure', 'portion']) {
+      assert.ok(Number.isFinite(result.metrics[key]) && result.metrics[key] >= 0 && result.metrics[key] <= 100);
     }
-    assert.ok(Number.isFinite(result.view.delay) && result.view.delay >= 0);
+    assert.ok(result.metrics.pace >= 1 && result.metrics.pace <= 6);
+    assert.ok(result.metrics.pause >= 0 && result.metrics.pause <= 5);
+    for (const key of ['headTurn', 'brow', 'handBlock', 'opening']) unit(result.view[key]);
   }
   let state = createState();
-  for (let i = 0; i < 40; i++) state = respond(state, { text: '忍着，快点' }).state;
+  for (let i = 0; i < 40; i++) state = respond(state, { text: '快点吃，忍着' }).state;
   for (let i = 0; i < 40; i++) state = respond(state, { action: 'rest' }).state;
-  for (const key of ['trust', 'fatigue', 'comprehension', 'comfort', 'bestScore']) {
+  for (const key of ['agitation', 'trust', 'comfort', 'readiness']) {
     assert.ok(state[key] >= 0 && state[key] <= 100, key);
   }
+  const dialogue = respond(state, { action: 'listen' });
+  Object.values(dialogue.view).forEach(unit);
 });
 
-test('history shares one schema and each result supplies three contextual suggestions', () => {
-  const dialogue = respond(createState(), { action: 'explain' });
-  const motion = evaluateMotion(dialogue.state, adapted);
-  assert.deepEqual(motion.state.history.map(({ kind, turn }) => [kind, turn]),
-    [['dialogue', 1], ['motion', 2]]);
-  for (const result of [dialogue, motion]) {
-    assert.equal(result.suggestions.length, 3);
-    assert.ok(result.suggestions.every(value => typeof value === 'string' && value.length > 0));
-    assert.ok(result.reply.length >= 15 && result.reply.length <= 60);
-    assert.equal(typeof result.behavior, 'string');
-    assert.equal(typeof result.coach, 'string');
-    const entry = result.state.history.at(-1);
-    for (const key of ['user', 'reply', 'coach']) assert.equal(typeof entry[key], 'string');
-    assert.equal(entry.reply, result.reply);
-  }
-  assert.deepEqual(motion.state.history.at(-1).metrics, motion.metrics);
-});
-
-const noEvidence = () => ({
-  negative: false, explain: false, posture: false, pacing: false,
-  check: false, observation: false, rest: false,
-});
-
-test('negated instructions do not earn positive skills or rest rewards', () => {
-  const before = createState();
-  for (const text of [
-    '不用坐稳，也不用双脚落地', '不要肩膀放松', '双脚不用落地',
-    '不需要向前伸，也不要收回来', '不用慢一点，也不用缩小幅度',
-    '不要问感受怎么样，也别问疼不疼', '不用休息，也不必暂停',
-    '不用坐稳和双脚落地以及肩膀放松',
-  ]) {
-    const result = respond(before, { text });
-    assert.deepEqual(result.evidence, noEvidence(), text);
-    assert.deepEqual(result.state.skills, before.skills, text);
-    for (const key of ['trust', 'comprehension', 'comfort', 'fatigue']) {
-      assert.equal(result.state[key], before[key], `${text}: ${key}`);
-    }
-  }
-});
-
-test('consent and explanation are separate; explanation needs actual motion content', () => {
-  assert.equal(SCENARIO.name, '周阿姨');
-  for (const text of ['好吗？', '您愿意试试吗？', '可以吗？', '我解释一下']) {
-    const result = respond(createState(), { text });
-    assert.equal(result.evidence.explain, false, text);
-    assert.equal(result.state.skills.explain, false, text);
-  }
-  assert.equal(respond(createState(), { text: '好吗？' }).state.flags.consent, true);
-  assert.equal(respond(createState(), { text: '不愿意' }).state.flags.consent, false);
-  const result = respond(createState(), { text: '手臂向前伸，停一下，再收回来。' });
-  assert.equal(result.evidence.explain, true);
-  assert.equal(result.state.skills.explain, true);
-});
-
-test('explicit actions remain valid despite negated text, unless pressure takes priority', () => {
-  for (const [action, key, text] of [
-    ['explain', 'explain', '不用向前伸'], ['posture', 'posture', '不用坐稳'],
-    ['slow', 'pacing', '不要慢一点'], ['check', 'check', '不用问感觉怎么样'],
-    ['rest', 'rest', '不用休息'],
-  ]) {
-    const result = respond(createState(), { text, action });
-    assert.equal(result.evidence[key], true, action);
-    if (key !== 'rest') assert.equal(result.state.skills[key], true, action);
-    else assert.ok(result.state.fatigue < 22);
-  }
-});
-
-test('pressure and dismissal suppress all positive evidence even with explicit actions', () => {
-  const before = evaluateMotion(createState(), poor).state;
-  for (const text of [
-    '跟不上也必须继续，别管感觉', '我看到你耸肩，快点跟上，感觉怎么样？',
-    '别管前倾和手臂疼，继续做', '忽略感受，坐稳慢一点，向前伸再收回来',
-  ]) {
-    for (const action of ['none', 'explain', 'posture', 'slow', 'check', 'rest']) {
-      const result = respond(before, { text, action });
-      assert.deepEqual(result.evidence, { ...noEvidence(), negative: true }, text);
-      assert.deepEqual(result.state.skills, before.skills, text);
-      assert.ok(result.state.fatigue > before.fatigue, text);
-    }
-  }
-});
-
-test('check recognizes requests for sensations rather than mentions or unrelated questions', () => {
-  for (const text of [
-    '现在感受怎么样？', '有没有疼？', '手臂酸不酸？', '您累不累？',
-    '疼吗？', '有没有不舒服？', '请告诉我现在的感受', '哪里疼？',
-  ]) {
-    assert.equal(respond(createState(), { text }).evidence.check, true, text);
-  }
-  for (const text of [
-    '感觉不错', '我知道你手臂疼', '疼是一个字', '我感觉今天不错，你好吗？',
-    '不用告诉我感受', '别问有没有疼', '有没有示范？', '如果疼就休息',
-  ]) {
-    const result = respond(createState(), { text });
-    assert.equal(result.evidence.check, false, text);
-    assert.equal(result.state.skills.check, false, text);
-  }
-});
-
-test('observation requires prior practice and an actual stated observation, not a keyword', () => {
-  const practiced = evaluateMotion(createState(), poor).state;
-  for (const text of ['我看到您刚才耸肩了', '刚才身体前倾了', '您跟不上我的动作了', '我注意到您前倾了']) {
-    assert.equal(respond(createState(), { text }).evidence.observation, false, text);
-    const result = respond(practiced, { text });
-    assert.equal(result.evidence.observation, true, text);
-    assert.deepEqual(result.state.skills, practiced.skills, text);
-  }
-  for (const text of [
-    '耸肩、前倾、跟不上', '如果跟不上就告诉我', '注意不要耸肩',
-    '我没看到您耸肩', '刚才没有前倾', '您没有跟不上', '您会不会跟不上？',
-    '我看到你耸肩，但忽略就好', '不用管跟不上',
-  ]) {
-    assert.equal(respond(practiced, { text }).evidence.observation, false, text);
-  }
-});
-
-test('negation scope preserves independent affirmative clauses and protective prohibitions', () => {
-  const result = respond(createState(), {
-    text: '不用向前伸，但请坐稳，双脚落地。不要忍痛，酸累就停。现在感觉怎么样？',
-  });
-  assert.deepEqual(result.evidence, {
-    ...noEvidence(), posture: true, check: true, rest: true,
-  });
-  for (const text of ['不要催快，慢一点', '不要强迫，先休息', '不要忽略感受，现在疼不疼？']) {
-    assert.equal(respond(createState(), { text }).evidence.negative, false, text);
-  }
-  const practiced = evaluateMotion(createState(), poor).state;
-  assert.equal(respond(practiced, {
-    text: '我看到您刚才耸肩了，我们慢一点。',
-  }).evidence.observation, true);
-});
-
-test('evidence is current-turn, independent plain data, and motion invents no dialogue evidence', () => {
+test('immutable input and independently owned nested result/history data', () => {
   const original = freeze(prepare());
   const snapshot = JSON.stringify(original);
-  const unknown = respond(original, { text: '嗯' });
-  assert.deepEqual(unknown.evidence, noEvidence());
-  const repeated = respond(original, { action: 'posture' });
-  assert.equal(repeated.evidence.posture, true);
-  const motion = evaluateMotion(original, adapted);
-  assert.deepEqual(motion.evidence, noEvidence());
-  unknown.evidence.check = true;
-  assert.equal(motion.evidence.check, false);
+  const feeding = evaluateFeeding(original, good);
   assert.equal(JSON.stringify(original), snapshot);
-  assert.deepEqual(respond(original, {}).evidence, noEvidence());
+  feeding.metrics.score = -1;
+  feeding.view.opening = -1;
+  assert.ok(feeding.state.history.at(-1).metrics.score >= 0);
+  assert.ok(feeding.state.latestFeeding.view.opening >= 0);
+  const frozen = freeze(feeding.state);
+  const dialogue = respond(frozen, { action: 'check' });
+  const refused = evaluateFeeding(frozen, good);
+  dialogue.state.history.at(-2).metrics.score = -2;
+  dialogue.state.latestFeeding.metrics.score = -3;
+  dialogue.evidence.check = false;
+  assert.ok(frozen.history.at(-1).metrics.score >= 0);
+  assert.ok(refused.state.history.at(-2).metrics.score >= 0);
+  assert.equal(dialogue.state.history.at(-1).evidence.check, true);
+});
+
+test('history schema, concise Chinese replies and contextual suggestions', () => {
+  const results = ['none', 'explain', 'position', 'listen', 'choice', 'check', 'rest']
+    .map(action => respond(createState(), { action }));
+  results.push(respond(createState(), { text: '强喂' }), respond(prepare(), { action: 'choice' }),
+    evaluateFeeding(createState(), good), evaluateFeeding(prepare(), good),
+    evaluateFeeding(prepare(), { ...good, portion: 100 }),
+    evaluateFeeding(prepare(), { ...good, pace: 1 }),
+    evaluateFeeding(prepare(), { ...good, pause: 0 }),
+    respond(evaluateFeeding(prepare(), good).state, { action: 'check' }));
+  for (const result of results) {
+    assert.ok(result.reply.length >= 20 && result.reply.length <= 70, result.reply);
+    assert.equal(result.suggestions.length, 3);
+    assert.ok(result.suggestions.every(value => typeof value === 'string' && value.length));
+    const entry = result.state.history.at(-1);
+    assert.equal(entry.reply, result.reply);
+    assert.equal(entry.coach, result.coach);
+    assert.equal(entry.turn, result.state.turn);
+    assert.equal(typeof entry.user, 'string');
+    if (result.metrics) {
+      assert.equal(entry.kind, 'feeding');
+      assert.deepEqual(entry.metrics, result.metrics);
+    } else assert.deepEqual(Object.keys(result.evidence), Object.keys(emptyEvidence()));
+  }
+});
+
+test('temperature confirmation recognizes positive phrases and the exact demo line', () => {
+  for (const text of ['确认温度合适', '确认不烫', '已经放凉', '温度合适了',
+    '先少一点，确认温度合适再喂，您随时可以停。']) {
+    const original = freeze(createState());
+    const result = respond(original, { text });
+    assert.equal(result.state.flags.temperatureResolved, true, text);
+    assert.equal(original.flags.temperatureResolved, false);
+    assert.equal(result.state.flags.consent, false);
+  }
+  for (const text of ['不用确认温度合适', '不要确认不烫', '没有确认不烫',
+    '还没有已经放凉', '温度合适了是不可能的', '已经放凉了吗？',
+    '确认温度合适？', '确认不烫?', '如果温度合适了再喂', '确认不烫，必须吃']) {
+    assert.equal(respond(createState(), { text, action: 'explain' }).state.flags.temperatureResolved, false, text);
+  }
+});
+
+test('soothing and all shortcuts cannot bypass unresolved temperature', () => {
+  let state = ['explain', 'position', 'listen', 'choice', 'rest', 'listen', 'choice']
+    .reduce((current, action) => respond(current, { action }).state, createState());
+  assert.ok(state.agitation < 55);
+  assert.equal(state.flags.temperatureResolved, false);
+  assert.equal(state.flags.consent, false);
+  assert.match(respond(state, { action: 'choice' }).reply, /烫/);
+  // Even externally supplied consent cannot bypass the temperature gate.
+  state = { ...state, flags: { ...state.flags, consent: true } };
+  for (let i = 0; i < 2; i++) {
+    const result = evaluateFeeding(state, good);
+    assert.equal(result.metrics.accepted, false);
+    assert.equal(result.state.bites, 0);
+    assert.match(result.reply, /烫/);
+    state = result.state;
+  }
+  state = respond(state, { text: '确认不烫' }).state;
+  state = respond(state, { action: 'choice' }).state;
+  assert.equal(evaluateFeeding(state, good).metrics.accepted, true);
+});
+
+test('zero portion never counts as a bite even with full preparation', () => {
+  for (const portion of [0, -10]) {
+    const result = evaluateFeeding(prepare(), { ...good, portion });
+    assert.equal(result.metrics.portion, 0);
+    assert.equal(result.metrics.accepted, false);
+    assert.equal(result.state.bites, 0);
+    assert.equal(result.state.flags.swallowing, false);
+    assert.equal(result.view.opening, 0);
+    assert.match(result.reply, /空/);
+    assert.equal(result.state.history.at(-1).metrics.accepted, false);
+  }
+});
+
+test('post-check replies distinguish waiting from host-finished swallowing', () => {
+  const accepted = evaluateFeeding(prepare(), good).state;
+  const waiting = respond(accepted, { action: 'check' });
+  assert.match(waiting.reply, /等一等|慢慢咽/);
+  assert.doesNotMatch(waiting.reply, /已经咽下/);
+  const ended = { ...accepted, flags: { ...accepted.flags, swallowing: false } };
+  const checked = respond(ended, { action: 'check' });
+  assert.match(checked.reply, /^这口已经咽下了/);
+  assert.equal(checked.state.flags.swallowing, false);
+  assert.equal(checked.state.completed, true);
+  assert.equal(checked.state.history.at(-1).reply, checked.reply);
+  assert.equal(checked.state.history.at(-1).afterFeedingTurn, accepted.latestFeeding.turn);
+});
+
+test('ready without consent suggests choice; accepted suggests a usable check before and after animation', () => {
+  const ready = prepare();
+  const noConsent = { ...ready, flags: { ...ready.flags, consent: false, refusal: true } };
+  const suggested = respond(noConsent, {}).suggestions[0];
+  const renewed = respond(noConsent, { text: suggested });
+  assert.equal(renewed.evidence.choice, true);
+  assert.equal(renewed.state.flags.consent, true);
+  const feeding = evaluateFeeding(ready, good);
+  assert.equal(respond(feeding.state, { text: feeding.suggestions[0] }).evidence.check, true);
+  const ended = { ...feeding.state, flags: { ...feeding.state.flags, swallowing: false } };
+  const result = respond(ended, {});
+  const checked = respond(result.state, { text: result.suggestions[0] });
+  assert.equal(checked.evidence.check, true);
+  assert.equal(checked.state.completed, true);
+});
+
+test('bedside posture wording and human coach feedback omit table, app and numeric gates', () => {
+  assert.match(SCENARIO.brief, /歪靠护理床上/);
+  assert.match(INITIAL_MESSAGE, /歪靠在护理床上/);
+  assert.match(INITIAL_SUGGESTIONS.join(''), /抬高床头.*整理靠枕/);
+  const position = respond(createState(), { action: 'position' });
+  assert.match(position.reply, /床头.*靠枕/);
+  assert.match(position.behavior, /半坐卧/);
+  assert.doesNotMatch(JSON.stringify(position), /餐桌|桌前|双脚|落地|\d+度/);
+  assert.equal(respond(createState(), { text: '抬起床头' }).evidence.position, true);
+  const waiting = evaluateFeeding(prepare(), good).state;
+  const ended = { ...waiting, flags: { ...waiting.flags, swallowing: false } };
+  const results = ['none', 'explain', 'position', 'listen', 'choice', 'check', 'rest']
+    .map(action => respond(createState(), { action }));
+  results.push(evaluateFeeding(createState(), good), evaluateFeeding(prepare(), good),
+    evaluateFeeding(prepare(), { ...good, portion: 0 }),
+    evaluateFeeding(prepare(), { ...good, portion: 99 }),
+    evaluateFeeding(waiting, good), respond(waiting, { action: 'check' }),
+    respond(ended, { action: 'check' }));
+  for (const result of results) {
+    assert.doesNotMatch(result.coach, /app|公式|阈值|[≤≥]|\d/i);
+    assert.doesNotMatch([result.reply, result.behavior, result.coach, ...result.suggestions].join(''), /餐桌|桌前|双脚|落地|\d+度/);
+    assert.ok(result.reply.length >= 20 && result.reply.length <= 70, result.reply);
+  }
+});
+
+test('pillow support and bed positioning recognize affirmative but not negated instructions', () => {
+  for (const text of ['整理靠枕', '我帮您整理靠枕，让您靠舒服些。',
+    '用靠枕支撑身体', '先抬高床头', '床头抬起一些', '先坐稳']) {
+    const result = respond(createState(), { text });
+    assert.equal(result.evidence.position, true, text);
+    assert.equal(result.state.skills.position, true, text);
+    assert.match(result.behavior, /半坐卧/);
+  }
+  for (const text of ['不用整理靠枕', '不要靠枕支撑', '靠枕支撑是不需要的',
+    '没有整理靠枕', '不用抬高床头和整理靠枕', '别整理靠枕，也不用靠枕支撑']) {
+    const result = respond(createState(), { text });
+    assert.equal(result.evidence.position, false, text);
+    assert.equal(result.state.skills.position, false, text);
+    assert.equal(result.state.comfort, createState().comfort, text);
+  }
+  assert.equal(respond(createState(), {
+    text: '不用整理靠枕，但请抬高床头。',
+  }).evidence.position, true);
+});
+
+test('missing position explicitly refuses entry and can be repaired with pillow support', () => {
+  const ready = prepare();
+  const unpositioned = { ...ready, skills: { ...ready.skills, position: false } };
+  for (const before of [createState(), unpositioned]) {
+    const result = evaluateFeeding(freeze(before), good);
+    assert.match(result.reply, /身子还歪着，先帮我靠舒服/);
+    assert.match(result.behavior, /未入口/);
+    assert.equal(result.metrics.accepted, false);
+    assert.equal(result.view.opening, 0);
+    assert.equal(result.state.bites, 0);
+    assert.equal(result.state.flags.swallowing, false);
+    assert.equal(result.state.history.at(-1).reply, result.reply);
+  }
+  let state = evaluateFeeding(unpositioned, good).state;
+  state = respond(state, { text: '整理靠枕，用靠枕支撑身体。' }).state;
+  state = respond(state, { action: 'choice' }).state;
+  assert.equal(evaluateFeeding(state, good).metrics.accepted, true);
 });

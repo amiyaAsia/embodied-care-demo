@@ -1,41 +1,37 @@
 /**
- * 康养护工示范训练：坐姿上肢前伸—停留—回收。
- * 确定性教学模拟，不是医疗处方；0–100 数值均为非临床归一化指标。
- * tempo 是一次前伸—停留—回收的节奏参数（秒），hold 为停留秒数。
- * metrics.lag / view.delay 使用秒，其余 metrics 除 tempo/hold 外使用 0–100。
+ * 烦躁长者进食沟通训练，纯 ES 模块、确定性模拟、无依赖。
+ * 食物是本虚拟案例已确认适合的软食；指标不是诊断或临床量表。
+ * pace / pause 单位为秒；吞咽动画和结束时机由 app 管理。
  */
 export const SCENARIO = Object.freeze({
-  name: '周阿姨',
-  age: 76,
-  title: '坐姿上肢前伸：看示范、停一停、收回来',
-  brief: '你是真人被训护工，老人具身模仿者跟随你的示范。结合解释、坐姿提示与感受询问，调整幅度和节奏。本场景仅作训练模拟，非医疗处方；数值不是临床量表。',
+  name: '周阿姨', age: 76,
+  title: '给烦躁长者喂饭：先倾听，再征询，慢慢来',
+  brief: '周阿姨烦躁地歪靠护理床上，护工协助她进食。食物是本虚拟案例已确认适合的软食；先理解拒食原因，抬高床头、整理靠枕，让她舒适地半坐卧，再调整分量与节奏，尊重选择并确认感受。本训练不作真实诊断，不按喂饭量评分。',
 });
 
-export const INITIAL_MESSAGE = '我先坐着看你做一遍，好吗？手要伸到哪里、什么时候收回来，我还不太明白。';
+export const INITIAL_MESSAGE = '太烫了，别催我。我歪靠在护理床上，身子也不舒服，你先把勺子拿开，让我缓一缓。';
 export const INITIAL_SUGGESTIONS = Object.freeze([
-  '我先示范向前伸、停一下再收回来，您愿意试试吗？',
-  '先坐稳，双脚落地，肩膀放松。',
-  '我们慢一点，酸累就停，随时告诉我感受。',
+  '我知道您现在不想吃，是温度太烫，还是口味不合适？',
+  '先少一点，确认温度合适再喂，您随时可以停。',
+  '先抬高床头，整理靠枕，让您靠舒服些，您觉得舒服吗？',
 ]);
 
-const ACTIONS = new Set(['explain', 'posture', 'slow', 'rest', 'check', 'encourage', 'none']);
-const ACTION_TEXT = {
-  explain: '解释前伸、停留、回收，并询问是否愿意尝试',
-  posture: '提示坐稳、双脚落地和肩膀放松',
-  slow: '放慢示范并缩小幅度',
-  rest: '暂停动作，安排休息',
-  check: '询问感受、酸累或疼痛',
-  encourage: '温和鼓励，按自己的节奏尝试',
-  none: '等待老人回应',
-};
+const REQUIRED = ['explain', 'position', 'listen', 'choice'];
+const ACTION_TEXT = Object.freeze({
+  explain: '说明软食进食过程：少一点、慢慢来，随时可以停',
+  position: '抬高床头、整理靠枕，协助长者在护理床上舒适地半坐卧',
+  listen: '承认长者不想吃，倾听烦躁原因和温度、口味偏好',
+  choice: '提供自己吃或协助吃的选择，并征询是否愿意尝试',
+  check: '询问是否吞完、是否舒服，等待长者反馈',
+  rest: '移开勺子，暂停进食，让长者休息',
+  none: '等待长者回应',
+});
 
+const round = value => Math.round(value * 100) / 100;
 function clamp(value, min = 0, max = 100, fallback = min) {
   const number = typeof value === 'number' && !Number.isNaN(value) ? value : fallback;
   return Math.min(max, Math.max(min, number));
 }
-const round = value => Math.round(value * 100) / 100;
-
-// Copy the complete plain-data tree so callers may edit a result independently.
 function copy(value) {
   if (Array.isArray(value)) return value.map(copy);
   if (value && typeof value === 'object') {
@@ -46,279 +42,284 @@ function copy(value) {
 
 export function createState() {
   return {
-    turn: 0, stage: 'observe', trust: 45, fatigue: 22, comprehension: 35, comfort: 58,
-    skills: { explain: false, posture: false, pacing: false, check: false },
-    history: [], completed: false, rounds: 0, bestScore: 0, latestMotion: null,
-    flags: { consent: false, negative: false, needsRest: false, soreness: false, struggling: false },
+    turn: 0, stage: 'observe', trust: 30, agitation: 78, comfort: 35, readiness: 15,
+    bites: 0, attempts: 0,
+    skills: { explain: false, position: false, listen: false, choice: false, check: false },
+    flags: { consent: false, refusal: true, swallowing: false, temperatureResolved: false },
+    history: [], latestFeeding: null, completed: false,
   };
 }
 
-function finish(state) {
-  for (const key of ['trust', 'fatigue', 'comprehension', 'comfort', 'bestScore']) {
+function normalize(state) {
+  for (const key of ['trust', 'agitation', 'comfort', 'readiness']) {
     state[key] = round(clamp(state[key]));
   }
-  state.flags.needsRest = state.fatigue >= 70 || state.comfort < 30 || state.flags.soreness;
-  // Completion describes current readiness, not a permanent lock or past badge.
-  state.completed = state.rounds >= 2 && state.skills.explain && state.skills.posture
-    && state.skills.check && (state.latestMotion?.metrics.score ?? 0) >= 75 && state.fatigue < 75;
+}
+const prepared = state => REQUIRED.every(key => state.skills[key])
+  && state.agitation < 55 && state.flags.temperatureResolved;
+
+function finish(state) {
+  normalize(state);
   if (state.completed) state.stage = 'completed';
-  else if (state.flags.negative || state.flags.needsRest || state.flags.struggling) state.stage = 'adapt';
-  else if (state.rounds > 0) state.stage = 'practice';
+  else if (state.flags.swallowing) state.stage = 'swallowing';
+  else if (state.flags.consent && prepared(state)) state.stage = 'ready';
+  else if (state.attempts || state.agitation >= 90) state.stage = 'adapt';
   else if (Object.values(state.skills).some(Boolean)) state.stage = 'prepare';
   else state.stage = 'observe';
 }
 
 function suggestions(state) {
-  if (state.flags.needsRest || state.flags.negative) {
-    return ['先把手臂放下休息，酸累就停。', '现在感觉怎么样，有没有疼？', '等您愿意，我们缩小幅度、慢一点。'];
-  }
-  const choices = [];
-  if (!state.skills.explain) choices.push(INITIAL_SUGGESTIONS[0]);
-  if (!state.skills.posture) choices.push(INITIAL_SUGGESTIONS[1]);
-  if (!state.skills.check) choices.push('刚才手臂有什么感受，有没有酸或疼？');
-  choices.push('看我慢慢示范，小幅前伸，停一下再收回来。',
-    '按您舒服的速度来，跟不上就告诉我。', '我们先休息一下，再决定是否继续。');
-  return choices.slice(0, 3);
+  if (state.flags.swallowing || (state.latestFeeding?.metrics.accepted && !state.completed)) return [
+    '您吞完了吗，现在舒服吗？我等您回应。',
+    '我们先休息，勺子移开，按您的节奏来。',
+    '接下来您想自己吃，还是让我协助？等您准备好再说。',
+  ];
+  const choice = '您想自己吃，还是让我协助？愿意先试一小口吗？';
+  if (prepared(state) && !state.flags.consent) return [
+    choice, '每次少一点，慢慢来，等您回应再继续。', '先暂停休息，把勺子移开。',
+  ];
+  const list = [];
+  if (!state.flags.temperatureResolved) list.push(INITIAL_SUGGESTIONS[1]);
+  if (!state.skills.listen || state.flags.refusal) list.push(INITIAL_SUGGESTIONS[0]);
+  if (!state.skills.explain && state.flags.temperatureResolved) list.push(INITIAL_SUGGESTIONS[1]);
+  if (!state.skills.position) list.push(INITIAL_SUGGESTIONS[2]);
+  list.push(choice,
+    '每次少一点，慢慢来，等您回应再继续。', '先暂停休息，把勺子移开。');
+  return list.slice(0, 3);
 }
 
-function feedback(state, intent) {
-  if (intent === 'negative') return {
-    reply: '你一催，我就有点紧张，手臂也酸了。这个速度我跟不上，能先停一停吗？',
-    behavior: '手臂回收，肩膀紧绷，身体略向后退，暂缓跟随。',
-    coach: '催促和强迫降低了舒适与信任。先回应老人的困难，再询问是否愿意继续。',
-  };
-  if (intent === 'rest') return {
-    reply: state.fatigue > 55
-      ? '好，我先把手放下来歇歇，还是有点酸，等缓过来再看你示范。'
-      : '歇一歇舒服些了。等会儿你慢慢做，我看清楚了再跟着试。',
-    behavior: '双手落回腿上，肩膀逐渐放松，保持坐姿休息。',
-    coach: '休息降低模拟疲劳；继续前重新询问感受，用实际示范检验调整是否合适。',
-  };
-  if (state.flags.needsRest) return {
-    reply: '我听见了，不过手臂还酸着，想先放下来歇一会儿，再看你做。',
-    behavior: '手臂放低，注视护工，暂不主动追加动作。',
-    coach: '老人仍有酸累反馈，先暂停并询问感受；口头鼓励不能消除累积疲劳。',
-  };
-  const lines = {
-    explain: ['这样说我明白些了，是向前伸、停一下再回来吧？你做一遍，我看着学。',
-      '目光跟随护工双手，轻轻点头，等待完整示范。', '解释有助于理解；下一步用可看清的动作示范，而不是只重复口令。'],
-    posture: ['脚放稳、肩膀松下来，坐着踏实多了。你慢慢示范，我再跟着伸手。',
-      '双脚落地，坐稳骨盆，肩膀下沉，双手停在腿上。', '坐姿准备减少代偿，但动作幅度和速度仍需与老人能力相匹配。'],
-    slow: ['慢一点我看得清，也不用急着追你的手了。先伸小一点，我试着跟上。',
-      '放松肩部，注视示范，准备以较小幅度跟随。', '请把口头调整落实到下一次示范：幅度45–65、节奏3–6秒、停留0.6–2秒。'],
-    check: [state.flags.struggling
-      ? '刚才我想追上你的手，肩膀就抬起来了。能不能小一点、慢一点再做？'
-      : '谢谢你问我，坐着还舒服。看到你怎么伸、怎么收，我心里就更有数。',
-    '看向护工，描述刚才的感受，等待回应。', '询问感受后要回应反馈；用下一轮动作确认节奏与幅度是否合适。'],
-    encourage: ['你让我按自己的速度来，我就没那么紧张了。再示范一次，我慢慢跟。',
-      '与护工对视，肩膀稍放松，等待下一轮示范。', '温和鼓励支持信任，但不能替代解释、坐姿准备和感受确认。'],
-    observation: ['你注意到了，我刚才确实有点跟不上。能把动作放慢、伸小一点，再让我试试吗？',
-      '看向护工，放低手臂，等待针对刚才表现的调整。', '已回应练习中的跟随困难；接着询问感受，并在下一轮落实动作调整。'],
-    none: ['我还在看你的手，接下来要怎么做呢？你说具体一点，再示范给我看看吧。',
-      '保持坐姿，观察护工，等待明确提示。', '未识别到明确训练提示。请说明动作、调整坐姿或询问感受。'],
-  };
-  const [reply, behavior, coach] = lines[intent] || lines.none;
-  return { reply, behavior, coach };
-}
-
-// Conservative clause-level rules: a negation governs the remainder of its
-// clause, including coordinated instructions; punctuation/contrast resets it.
-// Protect symptom descriptions and A-not-A questions, which are not refusals.
+// Mask legitimate refusals/symptoms and A-not-A questions before inspecting
+// negation. A negated clause earns nothing; independent clauses still count.
 function affirmativeClause(clause) {
   const protectedPhrases = [];
   const masked = clause.replace(
-    /有没有|会不会|能不能|好不好|疼不疼|痛不痛|酸不酸|累不累|舒不舒服|愿不愿意|不舒服|不适|跟不上|来不及|别着急|不用急|不着急/g,
+    /确认不烫|愿不愿意|舒不舒服|有没有|是不是|能不能|好不好|吞没吞完|咽没咽完|不舒服|不合口味|不合适|不想吃|不愿吃|不着急|不用急|别着急/g,
     phrase => {
       protectedPhrases.push(phrase);
       return `\u0000${protectedPhrases.length - 1}\u0000`;
     },
   );
-  const prefix = masked.split(/不要|不用|不必|无需|不需要|不许|不能|别|没有|没|未|不/)[0];
-  return prefix.replace(/\u0000(\d+)\u0000/g, (_, index) => protectedPhrases[index]);
+  if (/不要|不用|不必|无需|不需要|不许|不能|别|没有|没|未|不|拒绝/.test(masked)) return '';
+  return masked.replace(/\u0000(\d+)\u0000/g, (_, index) => protectedPhrases[index]);
 }
 
-function evidenceFor(intents = {}) {
-  // Current-turn evidence, never inferred from accumulated skills or feedback.
-  return {
-    negative: Boolean(intents.negative),
-    explain: !intents.negative && Boolean(intents.explain),
-    posture: !intents.negative && Boolean(intents.posture),
-    pacing: !intents.negative && Boolean(intents.slow),
-    check: !intents.negative && Boolean(intents.check),
-    observation: !intents.negative && Boolean(intents.observation),
-    rest: !intents.negative && Boolean(intents.rest),
-  };
-}
-
-function detect(text, action, rounds) {
-  // Protective prohibitions (不要忍痛 / 不要忽略感受) are not pressure.
+function detect(text, action) {
   const pressureText = text.replace(
-    /(?:不要|不用|不必|不能|不许|别|无需|不需要|不)(?:再)?(?:强迫|勉强|催快|催促|催|快点|加快|赶紧|忍(?:着|住)?(?:疼|痛)?|再高(?:一点)?|忽略|无视)/g, '',
+    /(?:不要|不用|不必|不能|不许|别|无需|不需要|不会|不)(?:再|会)?(?:强行(?:喂饭|喂|入口|塞)?|强喂|硬塞|强迫|勉强|催促|催逼|催|快点|赶紧|忍(?:着|住)?(?:烫|痛|疼)?|忽略|无视)/g,
+    '',
   );
-  const negative = /催快|快点|加快|赶紧|强迫|必须|不许停|不能停|别停|再高|忍|忽略|无视|(?:别|不用|不要)管/.test(pressureText);
-  // Global negative priority also blocks explicit positive actions.
-  if (negative) return { negative: true };
-
+  const negative = /催|快点|赶紧|必须|强喂|强行|硬塞|强迫|勉强|忍|不许停|不能停|别停|不准停|忽略|无视|(?:别|不用|不要)管|张嘴.{0,5}(?:吃|喂|必须)|(?:不吃|不张嘴).{0,6}(?:也得|也要|就)/.test(pressureText);
+  const evidence = Object.fromEntries(
+    ['negative', 'explain', 'position', 'listen', 'choice', 'check', 'rest'].map(key => [key, false]),
+  );
+  if (negative) return { evidence: { ...evidence, negative: true }, consent: false };
   const clauses = text.split(/[，,。.!！?？;；\n]|但是|不过|但|而是/).map(affirmativeClause);
   const has = pattern => clauses.some(clause => pattern.test(clause));
-  const sensation = '(?:感受|感觉|疼|痛|酸|累|舒服|不适)';
-  const inquiry = new RegExp(
-    `${sensation}.{0,8}(?:怎么样|如何|怎样|吗|么|什么|哪里|哪儿)`
-    + `|(?:有没有|是否|哪里|哪儿|怎么).{0,8}${sensation}`
-    + '|疼不疼|痛不痛|酸不酸|累不累|舒不舒服'
-    + `|(?:告诉我|说说|问问|询问|问一下).{0,10}${sensation}`,
-  );
-  const observation = rounds > 0 && clauses.some(clause =>
-    /耸肩|前倾|跟不上|肩(?:膀)?.{0,4}抬|动作滞后|手(?:臂)?.{0,4}抖/.test(clause)
-    && /看到|看见|注意到|发现|刚才|这次|您|你/.test(clause)
-    && !/如果|假如|要是|可能|会不会|是否|有没有|吗|么|注意(?!到)|避免/.test(clause),
-  );
+  evidence.explain = action === 'explain' || has(/(?:说明|解释).{0,12}(?:进食|喂饭|软食)|(?:软食|喂饭|吃饭).{0,10}(?:少|慢|停)|少一点|少一[点口些]|一小口|小口.{0,6}(?:吃|喂)|慢慢来|慢一点/);
+   evidence.position = action === 'position' || has(/坐稳|坐直|坐好|坐舒服|整理靠枕|靠枕支撑|(?:抬起|抬高|升起).{0,4}床头|床头.{0,4}(?:抬起|抬高|升起)/);
+  evidence.listen = action === 'listen' || has(/(?:知道|理解|明白|看到|听到|听见).{0,10}(?:不想吃|烦躁|烦|不愿吃)|(?:怎么|为什么|什么原因|哪里|哪儿|是不是|是否|问问|询问|说说).{0,12}(?:不想吃|烦|温度|口味|烫|吵)|(?:温度|口味|烫|吵|不想吃|烦躁).{0,10}(?:吗|如何|怎么样|原因|还是)|想吃什么|喜欢什么口味/);
+  evidence.choice = action === 'choice' || has(/还是|您来选|你来选|由您决定|由你决定|(?:您|你)(?:可以|想|愿意).{0,5}自己吃|(?:选择|选一下).{0,8}(?:吃|口味|软食)/);
+  evidence.check = action === 'check' || has(/(?:吞完|咽完|舒服|感受|感觉).{0,8}(?:吗|怎么样|如何)|(?:有没有|是否).{0,8}(?:不舒服|吞完|咽完)|舒不舒服|吞没吞完|咽没咽完|(?:告诉我|问问|询问).{0,8}(?:感受|舒服|吞完|咽完)/);
+  evidence.rest = action === 'rest' || has(/休息|歇一|暂停|先停|移开勺子|把勺子.{0,3}(?:拿开|移开)|随时.{0,3}停/);
+  const consent = action === 'choice' || has(/愿不愿意|愿意.{0,12}(?:吗|么)|(?:试|尝|吃).{0,8}(?:可以吗|好吗|好不好)|可以试试吗/);
+  // A concrete temperature check/adjustment counts in this simulation, including
+  // the demo's "确认温度合适再喂". Questions and negations do not resolve it.
+  const temperatureResolved = text.split(/[，,。.!！;；\n]|但是|不过|但|而是/)
+    .map(affirmativeClause).some(clause =>
+    /确认温度合适|确认不烫|已经放凉|温度合适了/.test(clause)
+    && !/[？?]|吗|么|是否|有没有|是不是|如果|假如|要是/.test(clause));
+  return { evidence, consent, temperatureResolved };
+}
+
+function dialogueView(state) {
+  const refusal = state.flags.refusal;
   return {
-    negative: false,
-    consent: has(/愿意|同意|可以吗|好吗|好不好|能试试吗/),
-    explain: action === 'explain' || has(/前伸|向前伸|伸.{0,8}(?:回来|收回)|收回来|回收手臂/),
-    posture: action === 'posture' || has(/坐稳|双脚.{0,4}(?:落地|放稳|踩地)|肩(?:膀)?(?:要)?放松|放松肩/),
-    slow: action === 'slow' || has(/慢一点|慢慢|放慢|跟我|缩小幅度|小幅|伸小一点/),
-    rest: action === 'rest' || has(/休息|歇|暂停|酸.{0,5}停|累.{0,5}停|疼.{0,5}停|痛.{0,5}停/),
-    check: action === 'check' || has(inquiry),
-    observation,
-    encourage: action === 'encourage' || has(/别着急|不用急|不着急|做得好|按.{0,5}速度/),
+    headTurn: round(clamp(refusal ? 0.45 + state.agitation / 200 : state.agitation / 300, 0, 1)),
+    brow: round(clamp(state.agitation / 100, 0, 1)),
+    mouth: state.flags.swallowing || refusal ? 0 : 0.25,
+    handBlock: round(clamp(refusal ? 0.4 + state.agitation / 200 : 0.08, 0, 1)),
   };
+}
+
+const LISTEN_REPLIES = [
+  '太烫了，别催我。你肯听我说就好，先把勺子拿开，等温度合适再商量。',
+  '还有，这勺太大了，看着就吃不下。每次少一点，让我自己慢慢来，好吗？',
+  '我其实想自己吃，你在旁边帮一下就好。别一直把勺子递到我嘴边，我会烦。',
+  '旁边声音太吵了，听着心烦。安静一点，给我些时间，我再决定要不要吃。',
+];
+
+function feedback(state, evidence, consentGranted, checkedAfter) {
+  if (evidence.negative) return {
+    reply: '你越催我越不想吃，先把勺子拿开。我还没答应，别往我嘴边送，让我缓缓。',
+    behavior: '明显转头、抿嘴、抬手阻挡，拒绝勺子靠近。',
+    coach: '催逼使烦躁上升并撤回同意。移开勺子，承认拒绝、倾听原因，再征询意愿。',
+  };
+  if (checkedAfter) return {
+    reply: state.flags.swallowing
+      ? '你先等一等，让我慢慢咽，勺子先放下。谢谢你问我舒不舒服，我会告诉你的。'
+      : '这口已经咽下了，这样少一点、慢慢来舒服多了。谢谢你等我，也问我感受。',
+    behavior: state.flags.swallowing
+      ? '在护理床上保持舒适半坐卧，示意等待，进入进食后的感受确认对话。'
+      : '在护理床上保持舒适半坐卧，放松双手，回应这一口后的感受。',
+    coach: state.flags.swallowing
+      ? '你在进食后主动询问感受。现在继续等待吞咽与回应，先放下勺子，给长者足够时间。'
+      : '你等长者咽下后再次询问感受，完成了沟通闭环。接下来由长者决定继续还是休息。',
+  };
+  if (evidence.listen) {
+    const count = state.history.filter(entry => entry.kind === 'dialogue' && entry.evidence?.listen).length;
+    return {
+      reply: consentGranted
+        ? '你听我说了，也让我选，我愿意试一小口。先别急着递过来，少一点，慢慢来。'
+        : state.flags.temperatureResolved
+          ? LISTEN_REPLIES[Math.max(1, Math.min(count, LISTEN_REPLIES.length - 1))]
+          : (count ? '温度还是烫。' : '') + LISTEN_REPLIES[Math.min(count, LISTEN_REPLIES.length - 1)],
+      behavior: '看向护工说出烦躁原因，手逐渐放低，等待具体调整。',
+      coach: '先回应温度，再留意勺量、自主进食和噪音。倾听不等于已同意，实际递勺仍需小份、慢速和停顿。',
+    };
+  }
+  if (consentGranted) return {
+    reply: '这样说我愿意试一小口，你少盛一点，慢慢递过来。等我回应，再决定下一步。',
+    behavior: '点头表示本次愿意，手放低，等待小份软食。',
+    coach: '长者在准备充分后表达同意。下一步检验递勺分量与节奏；拒绝时立即停止。',
+  };
+  if (!state.flags.temperatureResolved && evidence.choice) return {
+    reply: '我可以自己选怎么吃，不过现在还是太烫了。先确认温度合适，再问我愿不愿意吃。',
+    behavior: '看向餐具表达选择，仍闭口示意暂缓递勺。',
+    coach: '愿意商量不等于已经愿意进食。先回应太烫的反馈，确认温度合适，再征询这一口的意愿。',
+  };
+  const lines = {
+    rest: ['好，先把勺子放下，让我安静歇一会儿。等我想吃了，我们再商量怎么吃。',
+      '勺子移开，长者放松双手，暂停进食。', '暂停可降低烦躁；休息本身不代表同意，继续前重新征询。'],
+    choice: ['我想自己吃，你可以在旁边帮忙。不过现在还没准备好，先别把勺子送过来。',
+      '看向餐具，表达自主选择，仍暂缓递勺。', '提供选择并征询意愿；还需解释、坐姿、倾听及较低烦躁，才会表达同意。'],
+    position: ['床头抬起来，靠枕这样垫着舒服多了，身子也靠稳了。你先把勺子放旁边，让我缓一缓。',
+      '护理床床头抬高，靠枕支撑身体，长者舒适地半坐卧，手暂留身前。', '先抬高床头、整理靠枕，帮助长者靠稳、靠舒服，再倾听原因并提供选择。'],
+    explain: ['我听明白了，每次少一点，按我的节奏来。不过我还烦着，先别急着喂我。',
+      '注视护工，听取说明，暂时保持闭口。', '短句说明进食过程。口头承诺不能替代下一次实际分量、速度和等待。'],
+    check: ['你问我舒服不舒服，我能告诉你。现在还想缓缓，先把勺子放下，别急着继续。',
+      '回应感受询问，示意护工等待。', '已记录感受询问；完成训练还需一次接受尝试，以及成功之后的再次确认。'],
+    none: ['我现在还不想急着吃，你先把勺子放下。听我说说哪里不合适，再商量好吗？',
+      state.skills.position ? '在护理床上保持舒适半坐卧，观察护工，等待具体沟通。' : '歪靠护理床上观察护工，等待协助调整体位与具体沟通。',
+      '请承认拒绝、询问原因，或说明小份慢喂、调整床上体位、提供选择。'],
+  };
+  const intent = ['rest', 'choice', 'position', 'explain', 'check'].find(key => evidence[key]) || 'none';
+  const [reply, behavior, coach] = lines[intent];
+  return { reply, behavior, coach };
 }
 
 export function respond(state, { text = '', action = 'none' } = {}) {
   const next = copy(state);
   text = typeof text === 'string' ? text.trim() : '';
-  action = ACTIONS.has(action) ? action : 'none';
-  const intents = detect(text, action, state.rounds);
-  const evidence = evidenceFor(intents);
+  action = Object.hasOwn(ACTION_TEXT, action) ? action : 'none';
+  const { evidence, consent, temperatureResolved } = detect(text, action);
   next.turn += 1;
-  next.flags.negative = intents.negative;
-  let intent = 'none';
-  if (intents.negative) {
-    next.fatigue += 12;
-    next.comfort -= 16;
-    next.trust -= 10;
-    next.flags.struggling = true;
-    intent = 'negative';
+  let consentGranted = false;
+  let checkedAfter = false;
+  if (evidence.negative) {
+    next.agitation += 18; next.trust -= 12; next.comfort -= 12; next.readiness -= 18;
+    next.flags.consent = false; next.flags.refusal = true; next.completed = false;
   } else {
-    if (intents.observation) intent = 'observation';
-    // Skill rewards are one-time; repeating keywords cannot farm readiness.
-    const rewards = [
-      ['explain', 'explain', 6, 18, 3], ['posture', 'posture', 3, 5, 7],
-      ['slow', 'pacing', 3, 7, 5], ['check', 'check', 5, 4, 5],
-    ];
-    for (const [name, skill, trust, comprehension, comfort] of rewards) {
-      if (!intents[name]) continue;
-      intent = name;
-      if (!next.skills[skill]) {
-        next.trust += trust;
-        next.comprehension += comprehension;
-        next.comfort += comfort;
+    if (temperatureResolved) next.flags.temperatureResolved = true;
+    const rewards = { explain: [6, 7, 4, 12], position: [4, 8, 12, 12],
+      listen: [10, 14, 8, 18], choice: [8, 10, 6, 18], check: [4, 3, 4, 5] };
+    for (const [key, [trust, calm, comfort, readiness]] of Object.entries(rewards)) {
+      if (!evidence[key]) continue;
+      const fresh = !next.skills[key];
+      // Repeated listening/choice can repair a refusal, but cannot supply missing skills.
+      if (fresh || key === 'listen' || key === 'choice') {
+        const scale = fresh ? 1 : 0.5;
+        next.trust += trust * scale; next.agitation -= calm * scale;
+        next.comfort += comfort * scale; next.readiness += readiness * scale;
       }
-      next.skills[skill] = true;
+      next.skills[key] = true;
     }
-    if (intents.consent || action === 'explain') next.flags.consent = true;
-    if (intents.encourage) {
-      next.trust += 2;
-      next.comfort += 1;
-      if (intent === 'none') intent = 'encourage';
+    if (evidence.rest) {
+      next.agitation -= 12; next.comfort += 6;
+      next.flags.consent = false; next.flags.refusal = true;
     }
-    if (intents.rest) {
-      next.fatigue -= 20;
-      next.comfort += 9;
-      next.flags.soreness = next.fatigue > 55;
-      intent = 'rest';
+    normalize(next);
+    if (consent && !evidence.rest && prepared(next) && !next.flags.swallowing) {
+      next.flags.consent = true; next.flags.refusal = false; consentGranted = true;
     }
+    const latest = next.latestFeeding;
+    checkedAfter = Boolean(evidence.check && next.bites > 0 && latest?.metrics.accepted
+      && latest.turn < next.turn && next.flags.consent && prepared(next));
+    if (checkedAfter) next.completed = true;
   }
   finish(next);
-  const result = feedback(next, intent);
+  const result = feedback(next, evidence, consentGranted, checkedAfter);
   next.history.push({ kind: 'dialogue', user: text || ACTION_TEXT[action],
-    reply: result.reply, coach: result.coach, turn: next.turn });
-  return { state: next, ...result, suggestions: suggestions(next), evidence };
+    reply: result.reply, coach: result.coach, evidence: { ...evidence }, turn: next.turn,
+    ...(checkedAfter ? { afterFeedingTurn: next.latestFeeding.turn } : {}),
+  });
+  return { state: next, ...result, suggestions: suggestions(next), evidence, view: dialogueView(next) };
 }
 
-export function evaluateMotion(state, {
-  amplitude = 55, tempo = 4.5, hold = 1.2, smoothness = 75, source = 'preset',
+export function evaluateFeeding(state, {
+  portion = 30, pace = 4, pause = 2, source = 'preset', steady = 85,
 } = {}) {
   const next = copy(state);
-  amplitude = clamp(amplitude, 0, 100, 55);
-  tempo = clamp(tempo, 1.5, 8, 4.5);
-  hold = clamp(hold, 0, 4, 1.2);
-  smoothness = clamp(smoothness, 0, 100, 75);
+  normalize(next);
+  portion = clamp(portion, 0, 100, 30);
+  pace = clamp(pace, 1, 6, 4);
+  pause = clamp(pause, 0, 5, 2);
+  steady = clamp(steady, 0, 100, 85);
   source = source === 'drag' ? 'drag' : 'preset';
-
-  // Reference reach capacity is 65%; fatigue progressively lowers usable reach.
-  const capacity = 65 - Math.max(0, next.fatigue - 30) * 0.22;
-  const overload = Math.max(0, amplitude - capacity);
-  const tooFast = Math.max(0, 3 - tempo);
-  const tooSlow = Math.max(0, tempo - 6);
-  const tooSmall = Math.max(0, 45 - amplitude);
-  const holdError = Math.max(0, 0.6 - hold) + Math.max(0, hold - 2);
-  const roughness = 100 - smoothness;
-  const compensation = clamp(4 + overload * 1.35 + tooFast * 12
-    + (next.skills.posture ? 0 : 17) + roughness * 0.15 + next.fatigue * 0.13);
-  const lag = 0.18 + tooFast * 0.55 + overload * 0.018 + roughness * 0.006
-    + next.fatigue * 0.006 + (100 - next.comprehension) * 0.004;
-  const matching = clamp(100 - overload * 1.25 - tooFast * 13 - roughness * 0.22
-    - next.fatigue * 0.12 - (100 - next.comprehension) * 0.08);
-  const score = clamp(100 - compensation * 0.3 - lag * 5 - roughness * 0.12
-    - overload * 0.45 - tooFast * 8 - tooSlow * 3 - tooSmall * 1.1
-    - holdError * 7 - next.fatigue * 0.14 - (100 - next.comprehension) * 0.08);
-  const metrics = {
-    score: round(score), matching: round(matching), compensation: round(compensation),
-    lag: round(lag), amplitude: round(amplitude), tempo: round(tempo), hold: round(hold),
-  };
-  const view = {
-    maxReach: round(clamp(Math.min(amplitude, capacity) / 100, 0, 1)),
-    delay: metrics.lag,
-    compensation: round(compensation / 100),
-    tremor: round(clamp(roughness * 0.006 + next.fatigue * 0.003 + overload * 0.004, 0, 1)),
-  };
-  next.turn += 1;
-  next.rounds += 1;
-  next.fatigue += 5 + overload * 0.22 + tooFast * 4 + holdError * 2 + roughness * 0.04;
-  next.comfort += score >= 75 ? 2 : -(4 + overload * 0.2 + tooFast * 3);
-  next.comprehension += score >= 75 ? 5 : 1;
-  next.trust += score >= 75 ? 2 : -2;
-  next.bestScore = Math.max(next.bestScore, metrics.score);
-  next.latestMotion = { metrics: { ...metrics }, view: { ...view }, smoothness, source };
-  next.flags.negative = false;
-  next.flags.struggling = score < 75;
-  next.flags.soreness = next.fatigue >= 65 || overload > 20;
-  finish(next);
-
-  let reply;
-  let coach;
-  if (next.flags.needsRest) {
-    reply = '我看懂你怎么做了，可手臂已经有点酸，越跟越吃力，想先放下来歇歇。';
-    coach = '老人出现酸累反馈，先休息并确认感受，再决定下一轮；不要只追求动作分数。';
-  } else if (overload > 5 || tooFast > 0) {
-    reply = '我想跟上你的手，可有点来不及，肩膀也跟着抬起来了。能慢些、伸小一点吗？';
-    coach = '示范超出当前跟随能力。缩小到45–65的幅度、放慢到3–6秒，并观察耸肩和前倾。';
-  } else if (roughness > 40) {
-    reply = '你的手一顿一顿，我有点拿不准什么时候跟。能连贯地再做一遍吗？';
-    coach = '提高示范连贯性，清楚展示前伸、短暂停留和回收，减少忽快忽慢。';
-  } else if (tooSmall > 0 || holdError > 0 || tooSlow > 0) {
-    reply = '我看见你在伸手，可伸到哪里、停多久还不太确定，想再看一遍完整的。';
-    coach = '调整示范范围与停留：幅度45–65、节奏3–6秒、停留0.6–2秒是本模拟的参考区间。';
-  } else if (score < 75) {
-    reply = '动作我看明白些了，不过跟起来还是有点吃力，想先坐稳，再慢慢试一次。';
-    coach = '结合坐姿、理解程度和疲劳调整；先确认感受，再进行下一轮示范。';
+  const waiting = next.flags.swallowing;
+  const permission = prepared(next) && next.flags.consent;
+  // Evaluate raw clamped numbers, never rounded display values at a boundary.
+  const accepted = Boolean(permission && !waiting && portion > 0 && portion <= 45 && pace >= 2.8 && pause >= 1.5);
+  const pressure = clamp((permission ? 0 : 28) + (waiting ? 35 : 0)
+    + Math.max(0, portion - 45) * 0.7 + Math.max(0, 2.8 - pace) * 18
+    + Math.max(0, 1.5 - pause) * 18 + (100 - steady) * 0.18 + next.agitation * 0.15);
+  const acceptance = accepted ? clamp(95 - pressure * 0.4) : clamp(40 - pressure * 0.6, 0, 40);
+  // Process quality, not calories, bites or cumulative volume.
+  const skillScore = REQUIRED.filter(key => next.skills[key]).length * 15;
+  const score = clamp(skillScore + (next.flags.consent ? 20 : 0) + 20 - pressure * 0.5);
+  const metrics = { score: round(score), acceptance: round(acceptance), pressure: round(pressure),
+    portion: round(portion), pace: round(pace), pause: round(pause), accepted };
+  next.turn += 1; next.attempts += 1; next.completed = false;
+  let reply, coach;
+  if (accepted) {
+    next.bites += 1; next.trust += 4; next.comfort += 4; next.agitation -= 5;
+    next.readiness += 4; next.flags.refusal = false; next.flags.swallowing = true;
+    reply = next.bites === 1
+      ? '这一小口我愿意试，慢慢来就好。先把勺子放下，等我咽一咽，别急着再送。'
+      : '这次也是我舒服的节奏，我愿意再试这一小口。让我慢慢咽，先等我回应。';
+    coach = '长者愿意接受这一小口。现在撤回勺子，等待吞咽与回应，再询问是否舒服；关注感受，不追求喂得多。';
   } else {
-    reply = next.completed
-      ? '这回我能跟着伸、停、再收回来了。你这样慢慢示范，我心里踏实多了。'
-      : '看到你这样示范，我明白怎么伸、怎么收了。这个幅度和速度，我能慢慢跟上。';
-    coach = next.completed
-      ? '本次达到训练完成条件。可继续练习；每轮仍需留意疲劳与老人反馈。'
-      : '本轮跟随较好。继续确认感受，完成准备环节，并用下一轮检验稳定性。';
+    next.agitation += 7 + pressure * 0.08; next.trust -= 4; next.comfort -= 5; next.readiness -= 8;
+    next.flags.consent = false; next.flags.refusal = true;
+    if (waiting) reply = '先等等，我还在慢慢咽，别再送下一勺。你把勺子拿开，等我给你回应再说。';
+    else if (!next.skills.position) reply = next.flags.temperatureResolved
+      ? '身子还歪着，先帮我靠舒服。你先把勺子拿开，整理一下靠枕，等我靠稳了再商量吃饭。'
+      : '身子还歪着，先帮我靠舒服。这口也太烫了，先把勺子拿开，让我靠稳，再确认温度。';
+    else if (!next.flags.temperatureResolved) reply = '太烫了，别催我。温度还没确认合适，你先把勺子拿开，等不烫了再问我，好吗？';
+    else if (portion === 0) reply = '勺子里还是空的呀，先放下来吧。等准备好一小口合适的软食，再问我愿不愿意吃。';
+    else if (!permission) reply = '我现在还是不想吃，你先停一停。刚才说的问题还要再商量，别直接把勺子送来。';
+    else if (portion > 45) reply = '这一勺还是太大了，我不想张嘴。先拿开，少盛一点，问过我再慢慢递过来。';
+    else if (pace < 2.8) reply = '你递得太快，我还没准备好，先拿开勺子。慢一点，等我点头了再试，好吗？';
+    else reply = '先别急着接着喂，我需要多等一会儿。把勺子放下，让我按自己的节奏来。';
+    coach = waiting
+      ? '长者还在咽，先停止递勺，耐心等待回应，再确认是否愿意继续。'
+      : !next.skills.position
+        ? '先撤回勺子。长者还歪靠着，请抬高床头、整理靠枕，让她半坐卧靠稳，并询问是否舒服，再确认温度与进食意愿。'
+        : !next.flags.temperatureResolved
+        ? '长者仍在反馈太烫。撤回勺子，先确认温度合适，再询问是否愿意尝试；安抚不能替代温度确认。'
+        : portion === 0
+          ? '这次是空勺，没有进食。先准备一小份温度合适的软食，重新询问长者意愿。'
+          : '观察转头、抿嘴、抬手：立即撤回勺子，不强行入口。倾听原因并重新征询；少盛一点、慢慢递勺，留足等待时间。';
   }
-  const behavior = compensation >= 35
-    ? '跟随前伸时耸肩、躯干略前倾，动作滞后，回收时有轻微抖动。'
-    : '保持坐姿，小幅前伸后停留并回收；跟随有轻微延迟。';
-  next.history.push({ kind: 'motion',
-    user: `动作示范：幅度${metrics.amplitude}，节奏${metrics.tempo}秒，停留${metrics.hold}秒，平滑度${round(smoothness)}（${source}）`,
+  finish(next);
+  const behavior = accepted
+    ? '自主微张嘴接受本次小份软食，护工撤勺，在护理床上保持舒适半坐卧，等待吞咽模拟与反馈。'
+    : '明确转头、抿嘴、抬手阻挡；勺子停在口外并撤回，未入口。';
+  const view = { accepted, headTurn: accepted ? 0.08 : 0.95,
+    brow: round(clamp(next.agitation / 100, 0, 1)), handBlock: accepted ? 0.05 : 1,
+    opening: accepted ? 0.55 : 0 };
+  next.latestFeeding = { metrics: { ...metrics }, view: { ...view }, steady: round(steady), source, turn: next.turn };
+  next.history.push({ kind: 'feeding',
+    user: `进食尝试：分量${metrics.portion}，递勺${metrics.pace}秒，停顿${metrics.pause}秒，平稳度${round(steady)}（${source}）`,
     reply, coach, metrics: { ...metrics }, turn: next.turn });
-  return { state: next, reply, behavior, coach, suggestions: suggestions(next),
-    metrics, view, evidence: evidenceFor() };
+  return { state: next, reply, behavior, coach, suggestions: suggestions(next), metrics, view };
 }

@@ -21,37 +21,38 @@
     </header>
     <main>
       <section class="page-title">
-        <div><div class="eyebrow">EMBODIED CARE TRAINING <span>CASE 01</span></div><h1>让长者跟得上你的示范<span class="level-tag">基础教学 · 动作观察</span></h1><p>练习的不是把动作做完，而是观察长者的反应，调整你教的方式。</p></div>
+        <div><div class="eyebrow">EMBODIED CARE TRAINING <span>CASE 02 · BEDSIDE CARE</span></div><h1>床旁进餐，先安顿好她<span class="level-tag">烦躁长者 · 床旁照护</span></h1><p>从歪靠床上的烦躁与拒食，到有支撑的姿势、被尊重的进餐节奏。</p></div>
         <button class="demo-button" id="demoButton"><span>▶</span> 看一段完整训练</button>
       </section>
       <div class="workspace">
         <section class="conversation panel" aria-label="多轮训练对话">
           <div class="conversation-head"><div><span class="heading-dot"></span><h2>训练对话</h2><span class="count-badge" id="turnCount">第 0 轮</span></div><span class="quiet-label">教学 × 行动</span></div>
-          <div class="case-mini"><div class="case-avatar">周</div><div><strong>周阿姨 <span>76 岁 · 虚拟案例</span></strong><p>能理解短句，跟随稍慢；幅度过大时会耸肩。</p></div><button class="info-button" id="caseButton" aria-label="查看案例">i</button></div>
+           <div class="case-mini"><div class="case-avatar">周</div><div><strong>周阿姨 <span>76 岁 · 歪靠床上</span></strong><p>身体下滑、头偏一侧；烦躁抿嘴，勺近时抬手。</p></div><button class="info-button" id="caseButton" aria-label="查看案例">i</button></div>
           <div class="chat-feed" id="chatFeed" role="log" aria-label="对话和教练反馈"></div>
           <div class="composer-area">
             <div class="suggestion-label">试着这样引导 <span>可点击，也可自由输入</span></div>
             <div class="suggestions" id="suggestions"></div>
             <form id="chatForm" class="composer"><label for="messageInput" class="sr-only">对周阿姨说的话</label><textarea id="messageInput" rows="2" maxlength="500" placeholder="对周阿姨说些什么，或描述你的观察…"></textarea><div class="composer-footer"><span>文字对话 · Enter 发送</span><button id="sendButton" type="submit" aria-label="发送">↑</button></div></form>
-            <div class="composer-note">长者会回应你；教练会点评你的教学行为。</div>
+            <div class="composer-note">练习照护判断与操作，不以进食量评定成绩。</div>
           </div>
         </section>
         <section class="training-column" aria-label="动作训练与反馈">
           <section class="stage-card panel">
-            <div class="stage-head"><div><span class="live-dot"></span><strong>坐姿上肢前伸</strong><span class="divider">/</span><span>示范 · 模仿 · 修正</span></div><div class="scene-toggles"><label><input id="guidesToggle" type="checkbox" checked> 关节辅助</label><label><input id="trailsToggle" type="checkbox" checked> 动作轨迹</label><button id="voiceButton" title="切换浏览器语音朗读" aria-pressed="false">语音 关</button></div></div>
-            <div class="scene-wrapper"><div id="sceneMount"></div><div class="scene-corner"><span class="scene-chip" id="modeChip">交互演练</span><span class="scene-chip faint">敬老院 · 康养活动室</span></div><div class="phase-chip" id="phaseChip"><i></i> 等待你的教学</div><div class="scene-observation" id="sceneObservation"><span>观察点</span><strong>关注肩部、躯干和动作节奏</strong></div></div>
-            <div class="phase-strip"><div class="phase-step" data-phase="ready"><span>01</span> 准备</div><div class="phase-step" data-phase="reach"><span>02</span> 前伸</div><div class="phase-step" data-phase="hold"><span>03</span> 停留</div><div class="phase-step" data-phase="return"><span>04</span> 回收</div><div class="phase-progress"><i id="motionProgress"></i></div><span id="motionTime">0.0 s</span></div>
+            <div class="stage-head"><div><span class="live-dot"></span><strong>烦躁长者进餐协助</strong><span class="divider">/</span><span>取食 · 等待 · 回应</span></div><div class="scene-toggles"><label><input id="guidesToggle" type="checkbox" checked> 关节辅助</label><label><input id="trailsToggle" type="checkbox" checked> 勺尖轨迹</label><button id="voiceButton" title="切换浏览器语音朗读" aria-pressed="false">语音 关</button></div></div>
+            <div class="scene-wrapper"><div id="sceneMount"></div><div class="scene-corner"><span class="scene-chip" id="modeChip">交互演练</span><span class="scene-chip faint">敬老院 · 床旁午餐</span></div><div class="phase-chip" id="phaseChip"><i></i> 观察床上姿势与拒食信号</div><div class="scene-observation" id="sceneObservation"><span>观察点</span><strong>歪靠 · 下滑 · 头偏一侧 · 抿嘴拒食</strong></div></div>
+            <div class="phase-strip"><div class="phase-step" data-phase="scoop"><span>01</span> 取食</div><div class="phase-step" data-phase="approach"><span>02</span> 递勺</div><div class="phase-step" data-phase="wait"><span>03</span> 等待</div><div class="phase-step" data-phase="withdraw"><span>04</span> 撤勺</div><div class="phase-step" data-phase="swallow"><span>05</span> 咽后</div><div class="phase-progress"><i id="motionProgress"></i></div><span id="motionTime">0.0 s</span></div>
           </section>
           <section class="action-card panel">
-            <div class="section-heading"><h2>你的示范方式</h2><span class="subtle">调整参数，或拖动场景中护工的手腕</span></div>
-            <div class="sliders"><label>示范幅度 <output id="amplitudeValue">80%</output><input id="amplitude" type="range" min="20" max="100" value="80" step="5"><span>小幅前伸 <span>更大范围</span></span></label><label>动作节奏 <output id="tempoValue">2.0 s</output><input id="tempo" type="range" min="1.5" max="8" value="2" step="0.5"><span>较快 <span>更从容</span></span></label><label>停留时间 <output id="holdValue">0.5 s</output><input id="hold" type="range" min="0" max="4" value="0.5" step="0.5"><span>不停留 <span>清楚展示</span></span></label></div>
-            <div class="action-buttons"><button class="primary-button" id="practiceButton">▶ 示范一次，让长者跟随</button><button class="outline-button" id="recordButton">◎ 手动示范</button><button class="text-button" id="restButton">Ⅱ 暂停休息</button></div>
-            <div id="recordHint" class="record-hint" hidden>拖住护工手腕：从腿前慢慢向前、停留，再拉回原处。完成后点“提交动作”。</div>
+            <div class="section-heading"><h2>你的喂食动作</h2><span class="subtle">参数仅用于虚拟案例，不是临床喂食标准</span></div>
+            <div class="sliders"><label>每勺分量 <output id="amplitudeValue">75%</output><input id="amplitude" type="range" min="10" max="100" value="75" step="5"><span>少量软食 <span>满勺</span></span></label><label>递勺用时 <output id="tempoValue">1.5 s</output><input id="tempo" type="range" min="1" max="6" value="1.5" step="0.5"><span>急促 <span>缓慢平稳</span></span></label><label>口前等待 <output id="holdValue">0.5 s</output><input id="hold" type="range" min="0" max="5" value="0.5" step="0.5"><span>立即递送 <span>留出回应时间</span></span></label></div>
+            <div class="position-action"><button class="outline-button" id="positionButton">↗ 调整床头 / 整理靠枕</button><span>先安顿头颈与躯干，再准备进食。</span></div>
+            <div class="action-buttons"><button class="primary-button" id="practiceButton">▶ 尝试递一勺 · 观察反应</button><button class="outline-button" id="recordButton">◎ 手动递勺</button><button class="text-button" id="restButton">↶ 撤勺 / 暂停</button></div>
+            <div id="recordHint" class="record-hint" hidden>拖动持勺手腕：从碗边递向口前、停一下、再撤回。拒绝时不追着嘴喂；完成后提交操作。</div>
           </section>
           <section class="coach-panel panel">
-            <div class="section-heading"><h2><span class="coach-icon">✦</span> 培训教练 <span class="count-badge">评价护工，不评价长者</span></h2><button class="text-button small" id="referenceButton">看教学示范 ↗</button></div>
-            <div class="coach-summary"><div class="score-ring" id="scoreRing"><strong id="teachingScore">0</strong><span>教学完成度</span></div><div class="coach-main"><strong id="coachTitle">先观察，再示范；先理解，再纠正。</strong><p id="coachText">先用一句话说明动作，再观察长者能否跟上。当前默认示范偏大偏快，试一次，看看周阿姨的反应。</p><div class="skill-checks" id="skillChecks"></div></div></div>
-            <div class="metric-grid"><div><span>动作匹配 <small>模拟</small></span><strong id="metricMatch">—</strong><div class="mini-track"><i id="matchBar"></i></div></div><div><span>模仿延迟</span><strong id="metricLag">—</strong><small>长者相对示范的时间差</small></div><div><span>代偿程度 <small>模拟</small></span><strong id="metricComp">—</strong><div class="mini-track amber"><i id="compBar"></i></div></div><div><span>长者疲劳 <small>模拟</small></span><strong id="metricFatigue">22<span>/100</span></strong><div class="mini-track amber"><i id="fatigueBar" style="width:22%"></i></div></div></div>
+            <div class="section-heading"><h2><span class="coach-icon">✦</span> 培训教练 <span class="count-badge">评价照护过程，不评进食量</span></h2><button class="text-button small" id="referenceButton">看分解动作 ↗</button></div>
+            <div class="coach-summary"><div class="score-ring" id="scoreRing"><strong id="teachingScore">0</strong><span>照护完成度</span></div><div class="coach-main"><strong id="coachTitle">不急着喂进去，先让她愿意被协助。</strong><p id="coachText">观察闭口与转头，回应温度和意愿，再调整分量、递勺与等待。</p><div class="skill-checks" id="skillChecks"></div></div></div>
+            <div class="metric-grid"><div><span>接受意愿 <small>模拟</small></span><strong id="metricMatch">—</strong><div class="mini-track"><i id="matchBar"></i></div></div><div><span>本次口前等待</span><strong id="metricLag">—</strong><small>不是吞咽完成检测</small></div><div><span>操作压迫感 <small>模拟</small></span><strong id="metricComp">—</strong><div class="mini-track amber"><i id="compBar"></i></div></div><div><span>长者烦躁 <small>模拟</small></span><strong id="metricFatigue">78<span>/100</span></strong><div class="mini-track amber"><i id="fatigueBar" style="width:78%"></i></div></div></div>
             <div class="round-comparison" id="roundComparison" hidden></div>
           </section>
         </section>
