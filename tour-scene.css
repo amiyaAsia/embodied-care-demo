@@ -1,0 +1,84 @@
+/* Standalone SVG presentation; all movement is controlled by the host's tick. */
+.tour-scene {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1100 / 640;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 18px;
+  background: #f5f3e7;
+  color: #304e42;
+  font-family: "Aptos", "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.tour-scene .tour-scene__caption {
+  fill: #fff9e7;
+  font-family: inherit;
+  font-size: 36px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.tour-scene .tour-scene__face-line,
+.tour-scene .tour-scene__skin-line,
+.tour-scene .tour-scene__age-line,
+.tour-scene .tour-scene__brow,
+.tour-scene .tour-scene__mouth {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tour-scene .tour-scene__face-line {
+  stroke: #866d56;
+  stroke-width: 1.5px;
+}
+
+.tour-scene .tour-scene__skin-line {
+  stroke: #ad7e63;
+  stroke-width: 1px;
+  opacity: .65;
+}
+
+.tour-scene .tour-scene__age-line {
+  stroke: #ab8e72;
+  stroke-width: 1.1px;
+  opacity: .6;
+}
+
+.tour-scene .tour-scene__brow {
+  stroke: #777e6d;
+  stroke-width: 2.7px;
+}
+
+.tour-scene .tour-scene__mouth {
+  stroke: #996f5c;
+  stroke-width: 2px;
+}
+
+.tour-scene .tour-scene__arm,
+.tour-scene .tour-scene__hand {
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* At widths below 489px, 36 SVG units would render below 16px. The same
+   programme remains in the bilingual accessible description at every size. */
+@supports (container-type: inline-size) {
+  .tour-scene { container-type: inline-size; }
+  @container (max-width: 488px) {
+    .tour-scene .tour-scene__caption { visibility: hidden; }
+  }
+}
+
+@media print {
+  .tour-scene {
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

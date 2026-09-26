@@ -20,7 +20,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Test simulation and trajectory models
+      - name: Test guided story, playback and public asset allowlist
         run: npm test
       - name: Build browser-only assets
         run: npm run build

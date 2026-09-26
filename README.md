@@ -1,61 +1,58 @@
-# Amiya Care Practice
+# Amiya Care Practice — guided service demonstration
 
-An English-first, bilingual browser demo for mealtime care practice. Animated care actions illustrate the context; the demo does **not** connect equipment, measure physical performance, assess swallowing safety or certify readiness.
+Public demonstration: https://amiyaasia.github.io/embodied-care-demo/
 
-## Learning loop
+One authored, automatically advancing bilingual story. Visitors observe **Hui Lin**, a fictional care worker; they do not take a test, enter dialogue or switch accounts.
 
-1. **Guided practice** with observable senior behaviour and bilingual coaching.
-2. **Returning encounter** with the prior agreed outcome displayed separately. Permission and preparation are always fresh.
-3. **Unfamiliar check** with another fictional senior. No suggestions, guided actions, live evidence, coaching or answer-key recap are available.
-4. **Human readiness review** of a frozen submission. In the explicitly labelled local role-play, a centre operator nominates a reviewer; that reviewer records a reasoned decision: ready for supervised practice, more practice, or not ready. No model automatically authorises work.
-5. **After-shift difficulty** creates a linked refresher and a planned follow-up assigned to the nominated reviewer.
-6. **Refresher and workplace follow-up**: a completed refresher is linked to the difficulty. The reviewer role records a follow-up observation to close it.
+## Eight chapters
 
-Reviewer nomination, identities, decisions and follow-ups are in-memory demonstration records. There is no authentication, real notification, verified practitioner review or backend persistence. Refreshing the page clears the session. JSON export includes the original inputs, bilingual generated responses and recorded review decision.
+1. Meet Hui Lin and Ms Tan: minimal handover and fictional care plan CP-M02.
+2. Guided practice: Ms Tan pushes her bowl away to finish a favourite programme. Hui Lin respects the refusal and records an agreed return. No food is eaten.
+3. Returning encounter: wishes are asked again; Ms Tan chooses independent eating with permitted setup help only.
+4. Unfamiliar check: Mr Lim is unsure about unfamiliar food. Prepared dialogue plays without hints or coaching.
+5. Human review: labelled fictional manager/reviewer cutaways show nomination, evidence and a reasoned decision for supervised workplace practice.
+6. After-shift difficulty: Hui Lin reports repeating an offer after a request to stop.
+7. Targeted refresher: refusal-focused practice responds to that difficulty.
+8. Workplace follow-up: fictional later supervised observation, continued support and a return to Hui Lin’s story.
 
-## Equally valid outcomes
+## Playback
 
-- The senior chooses a pause, which is respected and documented under the fictional care procedure.
-- The worker seeks appropriate senior/clinical support and documents the next step.
-- The senior chooses assistance; the worker prepares and demonstrates the agreed assistance, then checks back.
+- Muted, captioned autoplay when active and reduced motion is not requested.
+- Prominent Start/Continue, Pause, Restart, chapter selection and English / 中文.
+- Chapter changes and supporting information pause playback; hidden tabs do not skip content or resume automatically.
+- Optional **Read aloud** requires activation and serialises speech. All essential content is captioned.
+- Body/excerpts ≥18px; primary captions ≥22px; controls/secondary labels ≥16px.
+- No free-practice controls, role forms, sliders, drag interactions, measured performance or synthetic scores.
 
-Pausing and seeking support require **no serving attempt**. Assistance needs **no initial failed attempt**. There is no food quantity score, acceptance percentage or synthetic agitation score in the learner view. Numeric animation controls never determine competence or clinical safety.
+The provisional shared-lounge scenario and fictional CP-M02 require Singapore partner/practitioner review before a pilot. Animation does not detect swallowing or validate feeding safety. References and authored-adaptation credits are accessible through the Sources panel; no organisational endorsement is implied.
 
-## Languages and input
+## Run / test / build
 
-English is the default. English / 中文 switches instructions, senior dialogue, suggestions, feedback, scene labels and review labels without deleting encounter history. Original free-text inputs, reviewer reasons and workplace notes remain verbatim rather than being silently translated. Both English and Chinese free text are processed by the local rules engine in either display language.
-
-**Read aloud** is browser text-to-speech playback, not a voice conversation. No microphone, camera or remote LLM is used.
-
-## Care context
-
-The bedside case uses fictional care plan **CP-M01**, visible via **Care plan**. Positioning and swallowing animations are illustrative and require partner practitioner review before pilot use. The demo is not a feeding procedure or a swallowing assessment. A seated dining pilot variant should be selected only after the Singapore partner confirms relevance.
-
-The good-practice example starts with observation and permission and ends with a respected pause. A separate **Poor-response replay** is clearly labelled and excluded from the learner record.
-
-## Run and test
-
-Node.js 20+; no production dependencies or external assets.
+Node.js 20+; no runtime dependencies or external assets.
 
 ```sh
 npm start
-# http://localhost:4173
+# http://localhost:4173/
 npm test
 npm run build
 ```
 
-`build.mjs` copies eight browser assets to `dist/`. GitHub Actions tests and deploys `main` to GitHub Pages.
+`build.mjs` allowlists exactly seven assets: `index.html`, `tour.css`, `tour-scene.css`, `tour-app.js`, `tour-player.js`, `tour-story.js`, `tour-scene.js`. Internal briefs, research records, local handover files, recordings, tests and earlier interactive modules are not in the deployed build.
 
-`node browser-check.mjs` uses Playwright (install separately). Optional environment variables: `PLAYWRIGHT_MODULE` for its module path, `BROWSER_EXECUTABLE` for Chrome/Edge, `TEST_BASE_URL` for a preview URL. It covers English/Chinese input, refusal-respecting paths, first-attempt assistance, fresh returning encounters, hidden hints, reviewer nomination and decision, linked refresher, workplace follow-up, demo isolation and mobile overflow.
+`node browser-check.mjs` requires Playwright installed separately. Optional environment variables: `PLAYWRIGHT_MODULE`, `BROWSER_EXECUTABLE`, `TEST_BASE_URL`. Browser results and screenshots go to ignored `handover-local/`.
 
-## Files
+`node record-tour.mjs` records the full eight-chapter browser loop as an explicitly labelled accelerated QA recording. It requires Playwright’s video recorder. Output and chapter times are ignored local handover assets, not publicly deployed content.
 
-- `practice-engine.js`: bilingual fictional encounters, intent rules and three outcome paths.
-- `learning-loop.js`: snapshots, review submission, explicit human decisions and follow-up links.
-- `app.js`: bilingual UI, workflow controls and animation orchestration.
-- `scene.js`, `scene.css`: bedside animation with optional bilingual labels and no-hints mode.
-- `index.html`, `styles.css`, `practice.css`: English-first interface.
-- `practice-engine.test.js`, `learning-loop.test.js`: state-transition tests.
-- `browser-check.mjs`: browser integration checks.
+## Publishing arrangement
 
-The earlier acceptance-dependent engine was removed; Git history retains the previous demo implementation.
+This public repository remains the publishing target for the existing URL. GitHub Actions tests the story/player and verifies the asset allowlist, builds `dist/`, then deploys it using GitHub Pages.
+
+Future application and research development belongs in private `amiyaAsia/CareLab`. No private-repository migration, visibility change, credential exchange or cross-repository workflow has been implemented by this revision. A future migration requires an agreed mechanism to publish reviewed demo assets to this target or a verified replacement. Browser code is inspectable regardless of source privacy; existing public Git history is not erased by moving source.
+
+## Known boundaries
+
+All characters, records, submissions, assignments and reviewer actions are fictional. There is no backend, live AI coaching, real reviewer account or clinical approval.
+
+The previous interactive language-recognition defect remains logged for future application work: deterministic phrase matching is not general language understanding and can misclassify negation or novel English/Chinese wording. The current public demo does not accept visitor dialogue, so that engine is not part of the public build.
+
+Earlier interactive files remain in repository history/source for migration reference; the public entry point imports only the guided-tour modules.
