@@ -1,6 +1,0 @@
-{
-  "name": "amiya-care-practice-guided-demo",
-  "private": true,
-  "type": "module",
-  "scripts": { "start": "node server.mjs", "build": "node build.mjs", "test": "node --test tour-story.test.js tour-player.test.js public-build.test.js", "test:browser": "node browser-check.mjs" }
-}
