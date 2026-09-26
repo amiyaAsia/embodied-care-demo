@@ -1,35 +1,41 @@
-# CareLab · 烦躁长者进餐照护训练
+# Amiya Care Practice
 
-在线 Demo：https://amiyaasia.github.io/embodied-care-demo/
+An English-first, bilingual browser demo for mealtime care practice. Animated care actions illustrate the context; the demo does **not** connect equipment, measure physical performance, assess swallowing safety or certify readiness.
 
-左侧 37% 为多轮对话，右侧 63% 为双人动作场景、操作参数和培训教练。培训对象是护工；虚拟长者的拒食、情绪与接受反应提供练习反馈，不按喂进去几口评分。
+## Learning loop
 
-## 案例
+1. **Guided practice** with observable senior behaviour and bilingual coaching.
+2. **Returning encounter** with the prior agreed outcome displayed separately. Permission and preparation are always fresh.
+3. **Unfamiliar check** with another fictional senior. No suggestions, guided actions, live evidence, coaching or answer-key recap are available.
+4. **Human readiness review** of a frozen submission. In the explicitly labelled local role-play, a centre operator nominates a reviewer; that reviewer records a reasoned decision: ready for supervised practice, more practice, or not ready. No model automatically authorises work.
+5. **After-shift difficulty** creates a linked refresher and a planned follow-up assigned to the nominated reviewer.
+6. **Refresher and workplace follow-up**: a completed refresher is linked to the difficulty. The reviewer role records a follow-up observation to close it.
 
-76 岁周阿姨歪靠在护理床上，身体略向下滑，头偏向一侧，双腿盖着薄被。午餐时嫌烫、勺量大、被催促，也希望保留自己吃的选择。先观察拒绝信号、撤勺倾听；通过“调整床头 / 整理靠枕”安顿为有支撑的进食姿势，确认温度并重新征询。姿势未准备好时不会入口。
+Reviewer nomination, identities, decisions and follow-ups are in-memory demonstration records. There is no authentication, real notification, verified practitioner review or backend persistence. Refreshing the page clears the session. JSON export includes the original inputs, bilingual generated responses and recorded review decision.
 
-## 动作细节
+## Equally valid outcomes
 
-- 固定上臂和前臂长度的双关节逆运动学，手指握持水平银勺。
-- 侧视护理床：床头、分段床垫、枕头、被下腿部、放低护栏与轮子。床背抬起时，躯干、头、肩、嘴和靠枕一起移动；手勺目标随姿势重新计算，不拉长手臂。
-- 从软食碗浅取、托起、缓慢递勺、口前等待、接受或拒绝、撤勺、模拟吞咽。
-- 皱眉、闭唇、回避视线、转头后仰和抬手阻挡；拒绝时不会强行入口。
-- 接受时自主微张嘴，食物从勺面转移，撤勺后有轻微咀嚼与喉部动画。
-- 呼吸、眨眼、目光、餐巾、碗杯纸巾、持勺轨迹和关节辅助。
-- 点击“撤勺 / 暂停”播放撤回，不把未完成尝试计作入口。
+- The senior chooses a pause, which is respected and documented under the fictional care procedure.
+- The worker seeks appropriate senior/clinical support and documents the next step.
+- The senior chooses assistance; the worker prepares and demonstrates the agreed assistance, then checks back.
 
-## 交互
+Pausing and seeking support require **no serving attempt**. Assistance needs **no initial failed attempt**. There is no food quantity score, acceptance percentage or synthetic agitation score in the learner view. Numeric animation controls never determine competence or clinical safety.
 
-- 自由中文输入和建议话术；催促、否定、倾听、解释、选择产生不同反馈。
-- 调节每勺分量、递勺用时和口前等待。
-- 手动拖动持勺手腕或使用方向键，记录递送—停留—撤回，再回放和评价。手动记录是路径预演，不发生入口。
-- 观察题、前后操作比较、七项照护行为证据、复盘和 JSON 导出。
-- 自动完整案例和个人记录隔离，结束/停止恢复个人成绩。
-- 可选浏览器中文朗读；无录音、摄像头或远程模型调用。
+## Languages and input
 
-## 本地运行
+English is the default. English / 中文 switches instructions, senior dialogue, suggestions, feedback, scene labels and review labels without deleting encounter history. Original free-text inputs, reviewer reasons and workplace notes remain verbatim rather than being silently translated. Both English and Chinese free text are processed by the local rules engine in either display language.
 
-Node.js 20+，运行时无外部依赖、无 CDN。
+**Read aloud** is browser text-to-speech playback, not a voice conversation. No microphone, camera or remote LLM is used.
+
+## Care context
+
+The bedside case uses fictional care plan **CP-M01**, visible via **Care plan**. Positioning and swallowing animations are illustrative and require partner practitioner review before pilot use. The demo is not a feeding procedure or a swallowing assessment. A seated dining pilot variant should be selected only after the Singapore partner confirms relevance.
+
+The good-practice example starts with observation and permission and ends with a respected pause. A separate **Poor-response replay** is clearly labelled and excluded from the learner record.
+
+## Run and test
+
+Node.js 20+; no production dependencies or external assets.
 
 ```sh
 npm start
@@ -38,19 +44,18 @@ npm test
 npm run build
 ```
 
-`build` 仅复制七个浏览器运行文件到 `dist/`。GitHub Actions 在 main 推送后测试并发布 GitHub Pages。
+`build.mjs` copies eight browser assets to `dist/`. GitHub Actions tests and deploys `main` to GitHub Pages.
 
-浏览器集成测试：`node browser-check.mjs`。需 Playwright，可设置 `PLAYWRIGHT_MODULE` 指向其模块入口、`BROWSER_EXECUTABLE` 指向 Chrome/Edge；`TEST_BASE_URL` 可指定预览地址。
+`node browser-check.mjs` uses Playwright (install separately). Optional environment variables: `PLAYWRIGHT_MODULE` for its module path, `BROWSER_EXECUTABLE` for Chrome/Edge, `TEST_BASE_URL` for a preview URL. It covers English/Chinese input, refusal-respecting paths, first-attempt assistance, fresh returning encounters, hidden hints, reviewer nomination and decision, linked refresher, workplace follow-up, demo isolation and mobile overflow.
 
-## 模拟说明
+## Files
 
-本案例假定软食已经确认适合既定照护安排，不模拟诊断或吞咽障碍。指标、动作阈值、等待时间均为演示模型，不是临床喂食标准。吞咽动画不是实际检测；真实照护须根据个体照护计划，遇到呛咳、呼吸变化或吞咽困难应停止并寻求专业人员支持。
+- `practice-engine.js`: bilingual fictional encounters, intent rules and three outcome paths.
+- `learning-loop.js`: snapshots, review submission, explicit human decisions and follow-up links.
+- `app.js`: bilingual UI, workflow controls and animation orchestration.
+- `scene.js`, `scene.css`: bedside animation with optional bilingual labels and no-hints mode.
+- `index.html`, `styles.css`, `practice.css`: English-first interface.
+- `practice-engine.test.js`, `learning-loop.test.js`: state-transition tests.
+- `browser-check.mjs`: browser integration checks.
 
-## 实现
-
-- `engine.js`：烦躁、信任、意愿、多轮话术及进食结果。
-- `scene.js` / `scene.css`：喂食场景、固定骨长 IK、表情与器具动画。
-- `app.js`：回合编排、操作时间线、手动轨迹、训练证据与复盘。
-- `motion.js`：时间归一化轨迹分析，去除首尾静止时间。
-- `engine.test.js` / `motion.test.js`：状态与轨迹测试。
-- `browser-check.mjs`：真实浏览器拒食、修复、接受、撤勺、手动与移动端测试。
+The earlier acceptance-dependent engine was removed; Git history retains the previous demo implementation.

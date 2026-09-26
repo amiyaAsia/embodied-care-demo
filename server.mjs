@@ -13,4 +13,4 @@ http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
     res.end(content);
   } catch { res.writeHead(404); res.end('Not found'); }
-}).listen(4173, '127.0.0.1', () => console.log('CareLab ready: http://localhost:4173'));
+}).listen(4173, '127.0.0.1', () => console.log('Amiya Care Practice ready: http://localhost:4173'));

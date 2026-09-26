@@ -2,16 +2,63 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const clamp = (value, fallback = 0) => Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
 const mix = (a, b, t) => a + (b - a) * t;
 const point = p => `${p.x.toFixed(3)},${p.y.toFixed(3)}`;
+const shortName = (name, limit) => {
+  const letters = Array.from(name);
+  return letters.length > limit ? `${letters.slice(0, limit - 1).join('')}…` : name;
+};
 const phases = {
-  ready: ['准备', '先交流，确认床上姿势与进食意愿'],
-  position: ['调姿', '慢慢抬高床头 · 整理靠枕与支撑'],
-  scoop: ['取食', '浅取一小勺 · 托起后停稳'],
-  approach: ['靠近', '勺面水平 · 缓慢靠近嘴前'],
-  wait: ['等待', '停在嘴前 · 等待主动张口'],
-  accept: ['接受', '顺应张口 · 小口接受'],
-  withdraw: ['撤勺', '水平缓慢撤回 · 给长者留出空间'],
-  swallow: ['吞咽', '观察吞咽 · 等待这一口完成'],
-  rest: ['休息', '放下节奏 · 重新询问感受'],
+  ready: { en: ['Ready', 'Talk first · Check posture and consent'], zh: ['准备', '先交流，确认床上姿势与进食意愿'] },
+  position: { en: ['Position', 'Raise bed slowly · Adjust support'], zh: ['调姿', '慢慢抬高床头 · 整理靠枕与支撑'] },
+  scoop: { en: ['Scoop', 'Small spoonful · Lift and steady'], zh: ['取食', '浅取一小勺 · 托起后停稳'] },
+  approach: { en: ['Approach', 'Keep spoon level · Move slowly'], zh: ['靠近', '勺面水平 · 缓慢靠近嘴前'] },
+  wait: { en: ['Wait', 'Pause outside · Wait for voluntary opening'], zh: ['等待', '停在嘴前 · 等待主动张口'] },
+  accept: { en: ['Accept', 'Voluntary opening · Offer a small bite'], zh: ['接受', '顺应张口 · 小口接受'] },
+  withdraw: { en: ['Withdraw', 'Withdraw slowly and level · Leave space'], zh: ['撤勺', '水平缓慢撤回 · 给长者留出空间'] },
+  swallow: { en: ['Demonstrated wait', 'Not a swallowing assessment'], zh: ['示范等待', '非吞咽评估'] },
+  rest: { en: ['Rest', 'Pause · Ask how the senior feels'], zh: ['休息', '放下节奏 · 重新询问感受'] },
+};
+// Factual animation names only; check scenes must not suggest the next action.
+const motionPhases = {
+  en: { ready: 'Idle', position: 'Bed movement', scoop: 'Scoop', approach: 'Approach', wait: 'Pause', accept: 'Accept', withdraw: 'Withdraw', swallow: 'Pause', rest: 'Rest' },
+  zh: { ready: '静止', position: '床体移动', scoop: '取食', approach: '靠近', wait: '停顿', accept: '接受', withdraw: '撤勺', swallow: '停顿', rest: '休息' },
+};
+const movementLabel = 'Illustration movement';
+const labels = {
+  en: {
+    title: name => `Amiya Care Practice · Meal practice with ${name}`,
+    desc: name => `Amiya Care Practice animated scene. A care worker sits on a bedside stool on the left; ${name}, the simulated senior, rests in a care bed on the right with legs covered by a light quilt. Raise the bed head slowly and adjust pillows and support, then ask about willingness to eat. The spoon stays outside the mouth until posture is ready and when the senior turns away, closes their mouth or raises a hand. Drag the wrist or use arrow keys, Home and End to adjust spoon progress. Demonstrated wait is not a swallowing assessment.`,
+    illustrationDesc: name => `Animated bedside scene with a care worker and ${name}, the simulated senior, in a care bed.`,
+    room: 'Amiya Care Practice · Bedside meal',
+    worker: 'Care worker (you)', senior: 'Simulated senior', you: 'You',
+    seniorLabel: name => `${name} · Simulated senior`,
+    bed: 'Animated scene',
+    bedTitle: 'Animated scene · Care bed with near-side rail lowered',
+    cart: 'Bedside meal cart', scoop: 'Scoop shallow · Hold steady',
+    target: 'Pause before mouth', positionTarget: 'Posture first · Wait', blockTarget: 'Hand raised · Stop',
+    turnTarget: 'Turned away · Stop', closedTarget: 'Mouth closed · Wait',
+    drag: 'Spoon progress: drag the care worker’s wrist, or use arrow keys, Home and End',
+    dragTitle: 'Drag wrist: scoop → lift → pause before mouth',
+    positionStatus: 'Posture not ready; no entry into mouth', blockStatus: 'Hand blocking; stop before the hand',
+    turnStatus: 'Senior turned away; leave space', closedStatus: 'Mouth closed; wait outside',
+    progress: (value, status) => `Spoon progress ${value}%, ${status}`,
+  },
+  zh: {
+    title: name => `Amiya Care Practice · ${name}进食练习`,
+    desc: name => `Amiya Care Practice 动画场景，示意性床旁照护。左侧护工坐在床旁凳，右侧虚拟长者${name}靠在护理床上，双腿盖薄被。先慢慢抬高床头并整理靠枕与支撑，再询问进食意愿。姿势未就绪时银勺不会接触嘴部；转头、抿嘴或抬手时停在外侧。拖动手腕或使用方向键、Home、End 调整送勺进度。示范等待并非吞咽评估。`,
+    illustrationDesc: name => `床旁动画场景，包含护工与护理床上的虚拟长者${name}。`,
+    room: 'Amiya Care Practice · 床旁进食练习',
+    worker: '实训护工（你）', senior: '虚拟长者', you: '你',
+    seniorLabel: name => `${name} · 虚拟长者`,
+    bed: '动画场景', bedTitle: '动画场景 · 示意性床旁照护 · 护理床近侧护栏已放低',
+    cart: '床旁餐车', scoop: '浅取 · 托稳',
+    target: '嘴前停留区', positionTarget: '先调整姿势 · 暂不入口', blockTarget: '抬手拒绝 · 留出空间',
+    turnTarget: '转头回避 · 留出空间', closedTarget: '嘴巴闭合 · 等待',
+    drag: '送勺进度：拖动护工手腕，或使用方向键、Home、End',
+    dragTitle: '拖动手腕：取食 → 托起 → 嘴前停留',
+    positionStatus: '姿势未就绪，暂不入口', blockStatus: '抬手阻挡，停在手前',
+    turnStatus: '长者转头回避，留出空间', closedStatus: '嘴巴闭合，在外侧等待',
+    progress: (value, status) => `送勺 ${value}%，${status}`,
+  },
 };
 let serial = 0;
 
@@ -139,7 +186,7 @@ function room(id) {
     <path d="M0-14Q8-65-4-124M0-66L-28-99M1-52L33-89" fill="none" stroke="#75895f" stroke-width="4"/>
     <path d="M-3-109Q-33-112-24-144Q3-139-3-109M-21-93Q-50-82-54-112Q-28-120-21-93M7-72Q4-110 37-118Q47-86 7-72M8-39Q21-69 49-55Q40-28 8-39M-1-48Q-36-43-38-74Q-10-80-1-48" fill="#8ca478"/>
   </g>
-  <text x="72" y="42" class="care-scene-room-label">午间照护 / 床旁进食练习</text>`;
+  <text x="72" y="42" class="care-scene-room-label" data-part="room-label" data-label="room"/>`;
 }
 
 function chair(x) {
@@ -189,7 +236,7 @@ function bedding(id) {
     </g>
     <path d="M443 492V443Q443 433 453 433H481Q491 433 491 443V489" fill="url(#${id}-wood)" stroke="#ac9b7e" stroke-width="2"/>
     <path d="M453 446H479" stroke="#faf0dc" stroke-width="3" stroke-linecap="round"/>
-    <g class="care-scene-bed-label" transform="translate(831 552)"><rect x="-90" y="-13" width="180" height="26" rx="8"/><text text-anchor="middle" y="5">护理床 · 近侧护栏已放低</text></g>
+    <g class="care-scene-bed-label" transform="translate(831 552)"><title data-part="bed-title" data-label="bedTitle"/><rect x="-90" y="-13" width="180" height="26" rx="8"/><text text-anchor="middle" y="5" data-part="bed-label" data-label="bed"/></g>
   </g>`;
 }
 
@@ -321,7 +368,7 @@ function table(id) {
       <path d="M-8-6Q-20-22-9-37Q-1-29 10-33Q18-22 8-11Z" fill="#fffdf0" stroke="#dbdccc"/><path d="M-8-29L-3-11" stroke="#e6e7d6"/>
       <path d="M-17-8L6-12" stroke="#aaa98e" stroke-width="3" stroke-linecap="round"/>
     </g>
-    <text x="533" y="476" class="care-scene-cart-label" text-anchor="middle">床旁餐车</text>
+    <text x="533" y="476" class="care-scene-cart-label" text-anchor="middle" data-part="cart-label" data-label="cart"/>
   </g>`;
 }
 
@@ -334,11 +381,11 @@ export function mountScene(container) {
   const root = doc.createElement('div');
   root.className = 'care-scene';
   root.innerHTML = `<svg class="care-scene-svg" xmlns="${SVG_NS}" viewBox="0 0 1100 680" preserveAspectRatio="xMidYMid meet" role="group" aria-labelledby="${id}-title ${id}-desc">
-    <title id="${id}-title">午间床旁照护 · 周阿姨进食练习</title>
-    <desc id="${id}-desc">左侧年轻护工坐在床旁凳，右侧周阿姨歪斜摊靠在护理床枕头上，双腿盖薄被。先慢慢抬高床头并整理靠枕，再询问进食意愿。姿势未就绪时银勺不会接触嘴部；转头、抿嘴或抬手时停在外侧。拖动手腕或使用方向键、Home、End 调整送勺进度。</desc>
+    <title id="${id}-title" data-part="scene-title" data-label="title"/>
+    <desc id="${id}-desc" data-part="scene-desc" data-label="desc"/>
     ${room(id)}
-    <g class="care-scene-name"><rect x="380" y="116" width="192" height="34" rx="17"/><circle cx="400" cy="133" r="3.5"/><text x="485" y="138">你 · 受训护工</text></g>
-    <g class="care-scene-name care-scene-name-elder"><rect x="747" y="101" width="260" height="34" rx="17"/><circle cx="767" cy="118" r="3.5"/><text x="887" y="123">周阿姨 · 床旁照护模拟</text></g>
+    <g class="care-scene-name"><rect x="380" y="116" width="192" height="34" rx="17"/><circle cx="400" cy="133" r="3.5"/><text x="485" y="138" data-part="worker-label" data-label="worker"/></g>
+    <g class="care-scene-name care-scene-name-elder" data-part="senior-badge"><title data-part="senior-title" data-label="seniorLabel"/><rect x="747" y="101" width="260" height="34" rx="17"/><circle cx="767" cy="118" r="3.5"/><text x="887" y="123" data-part="senior-label" data-label="seniorLabel"/></g>
     ${bed(id)}${trainee(id)}${elder(id)}${bedding(id)}${table(id)}
     <g data-part="support-arm">${armMarkup(id, 'support')}
       <g data-part="support-hand"><path d="M-12-7Q-3-11 5-9L16-5Q19-2 14 0L3-1 14 3Q17 7 11 8L-1 6Q-7 10-12 5Z" fill="url(#${id}-skin)" stroke="#ba9177" stroke-width="1.2"/><path d="M0 1L11 4M-2 5L7 7" stroke="#c1977e" fill="none"/></g>
@@ -369,25 +416,25 @@ export function mountScene(container) {
       <path class="care-scene-target" data-part="target-path"/>
       <path class="care-scene-bones" data-part="bones"/>
       <circle data-joint="shoulder" r="4"/><circle data-joint="elbow" r="4"/><circle data-joint="wrist" r="5"/>
-      <g data-part="target-stop"><path d="M0-13V15M-5-13H5M-5 15H5" class="care-scene-stop"/><text x="-18" y="-24" text-anchor="end" data-part="target-label">嘴前停留区</text></g><text x="607" y="416">浅取 · 托稳</text>
+      <g data-part="target-stop"><path d="M0-13V15M-5-13H5M-5 15H5" class="care-scene-stop"/><text x="-18" y="-24" text-anchor="end" data-part="target-label"/></g><text x="607" y="416" data-part="scoop-label" data-label="scoop"/>
     </g>
     <path class="care-scene-trail" data-part="trail"/>
-    <g data-part="drag" class="care-scene-drag" role="slider" tabindex="0" aria-label="送勺进度：拖动护工手腕，或使用方向键、Home、End" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-disabled="false">
+    <g data-part="drag" class="care-scene-drag" role="slider" tabindex="0" aria-orientation="horizontal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-disabled="false">
       <circle r="26" class="care-scene-hit"/><circle r="22" class="care-scene-drag-ring"/>
-      <path d="M-31 4L-36 0-31-4M31-4L36 0 31 4" class="care-scene-drag-arrows"/><title>拖动手腕：取食 → 托起 → 嘴前停留</title>
+      <path d="M-31 4L-36 0-31-4M31-4L36 0 31 4" class="care-scene-drag-arrows"/><title data-part="drag-title" data-label="dragTitle"/>
     </g>
-    <g class="care-scene-stage" transform="translate(550 604)"><rect x="-236" y="-23" width="472" height="43" rx="21.5"/><circle cx="-211" cy="-1" r="3"/><text data-part="phase-label" x="-195" y="4"/><text data-part="phase-hint" x="-141" y="4"/></g>
+    <g class="care-scene-stage" transform="translate(550 604)"><rect x="-236" y="-23" width="472" height="43" rx="21.5"/><circle cx="-211" cy="-1" r="3"/><text data-part="phase-label" x="0" y="-6" text-anchor="middle"/><text data-part="phase-hint" x="0" y="11" text-anchor="middle"/></g>
   </svg>
-  <div class="care-scene-feedback" role="status" aria-live="polite" aria-atomic="true" hidden><span class="care-scene-feedback-speaker"></span><span class="care-scene-feedback-text"></span></div>`;
+  <div class="care-scene-feedback" role="status" aria-live="polite" aria-atomic="true" hidden><span class="care-scene-feedback-speaker" data-part="speech-speaker"></span><span class="care-scene-feedback-text" data-part="speech-text"></span></div>`;
   container.appendChild(root);
   const part = (name, parent = root) => parent.querySelector(`[data-part="${name}"]`);
   const svg = root.querySelector('svg');
-   const nodes = Object.fromEntries(['spoon', 'spoon-shadow', 'food', 'grip', 'guides', 'bones', 'trail', 'drag', 'block-hand', 'resting-hand', 'phase-label', 'phase-hint', 'bed-back', 'blanket', 'blanket-folds', 'support-hand', 'target-path', 'target-stop', 'target-label'].map(name => [name, part(name)]));
+  const nodes = Object.fromEntries(['spoon', 'spoon-shadow', 'food', 'grip', 'guides', 'bones', 'trail', 'drag', 'block-hand', 'resting-hand', 'phase-label', 'phase-hint', 'bed-back', 'blanket', 'blanket-folds', 'support-hand', 'target-path', 'target-stop', 'target-label', 'senior-badge'].map(name => [name, part(name)]));
   const people = Object.fromEntries(['trainee', 'elder'].map(role => {
     const node = root.querySelector(`[data-person="${role}"]`);
     return [role, Object.fromEntries(['body', 'head', 'eyes', 'gaze', 'mouth', 'lower-lip', 'jaw', 'throat', 'brow-near', 'brow-far', 'frown', 'pillow'].map(name => [name, part(name, node)]))];
   }));
-   const arms = Object.fromEntries(['feeding', 'support', 'blocking', 'resting'].map(name => {
+  const arms = Object.fromEntries(['feeding', 'support', 'blocking', 'resting'].map(name => {
     const group = root.querySelector(`[data-arm="${name}"]`);
     return [name, Object.fromEntries(['upper', 'lower', 'elbow-fill', 'forearm', 'cuff', 'seam'].map(key => [key, part(key, group)]))];
   }));
@@ -395,6 +442,7 @@ export function mountScene(container) {
   const feedback = root.querySelector('.care-scene-feedback');
   const feedbackName = root.querySelector('.care-scene-feedback-speaker');
   const feedbackText = root.querySelector('.care-scene-feedback-text');
+  const labelNodes = [...root.querySelectorAll('[data-label]')];
   const reducedMotion = win.matchMedia?.('(prefers-reduced-motion: reduce)');
   const now = () => win.performance.now();
   const startedAt = now();
@@ -404,14 +452,29 @@ export function mountScene(container) {
   let dragValue = 0, pointerOffset = { x: 0, y: 0 }, currentWrist = { x: 430, y: 405 };
   let history = [], lastTrailTime = -Infinity;
   let lastSpeech = null, lastSpeaker = null, lastPhase = null;
+  let lastLocale = null, lastSeniorName = null, lastNoHints = null;
   const set = (node, key, value) => node.setAttribute(key, String(value));
+  // Only shrink labels that exceed their SVG slot; retain readable natural spacing.
+  function fitLabel(node, value, width) {
+    if (node.textContent === value) return;
+    node.textContent = value;
+    node.removeAttribute('textLength');
+    node.removeAttribute('lengthAdjust');
+    if (node.getComputedTextLength?.() > width) {
+      set(node, 'textLength', width);
+      set(node, 'lengthAdjust', 'spacingAndGlyphs');
+    }
+  }
 
   function normalize(next) {
-    return { progress: clamp(next.progress), posture: clamp(next.posture), phase: Object.hasOwn(phases, next.phase) ? next.phase : 'ready',
+    return { locale: next.locale === 'zh' ? 'zh' : 'en',
+      seniorName: typeof next.seniorName === 'string' && next.seniorName.trim() ? next.seniorName.trim() : 'Ms Zhou',
+      progress: clamp(next.progress), posture: clamp(next.posture), phase: Object.hasOwn(phases, next.phase) ? next.phase : 'ready',
       headTurn: clamp(next.headTurn), brow: clamp(next.brow), mouth: clamp(next.mouth), handBlock: clamp(next.handBlock),
       accepted: Boolean(next.accepted), portion: clamp(Number.isFinite(next.portion) ? next.portion / 100 : 0) * 100,
       food: Boolean(next.food), speech: typeof next.speech === 'string' ? next.speech : '',
       speaker: ['elder', 'trainee'].includes(next.speaker) ? next.speaker : null,
+      noHints: Boolean(next.noHints),
       showGuides: Boolean(next.showGuides), showTrails: Boolean(next.showTrails), selected: Boolean(next.selected) };
   }
 
@@ -436,6 +499,31 @@ export function mountScene(container) {
 
   function render(timestamp) {
     if (destroyed) return;
+    const text = labels[frame.locale];
+    const phase = phases[frame.phase][frame.locale];
+    const labelsChanged = lastLocale !== frame.locale || lastSeniorName !== frame.seniorName || lastNoHints !== frame.noHints;
+    if (labelsChanged) {
+      lastLocale = frame.locale; lastSeniorName = frame.seniorName; lastNoHints = frame.noHints;
+      root.classList.toggle('care-scene-no-hints', frame.noHints);
+      root.lang = frame.locale;
+      root.dataset.locale = frame.locale;
+      set(svg, 'lang', frame.locale);
+      for (const node of labelNodes) {
+        const key = node.dataset.label;
+        const value = frame.noHints && key === 'desc' ? text.illustrationDesc
+          : frame.noHints && key === 'dragTitle' ? movementLabel
+          : frame.noHints && key === 'scoop' ? '' : text[key];
+        // Keep the full name in accessible text; only the small SVG badge is shortened.
+        const name = key === 'seniorLabel' && node.localName === 'text'
+          ? shortName(frame.seniorName, frame.locale === 'en' ? 12 : 8) : frame.seniorName;
+        const content = typeof value === 'function' ? value(name) : value;
+        const width = { room: 550, worker: 146, seniorLabel: 216, bed: 160, cart: 150, scoop: 180 }[key];
+        if (node.localName === 'text') fitLabel(node, content, width);
+        else node.textContent = content;
+      }
+      set(nodes['senior-badge'], 'aria-label', text.seniorLabel(frame.seniorName));
+      set(nodes.drag, 'aria-label', frame.noHints ? movementLabel : text.drag);
+    }
     const time = (timestamp - startedAt) / 1000;
     const elapsed = Math.max(0, (timestamp - phaseStarted) / 1000);
     const ambient = reducedMotion?.matches ? 0 : 1;
@@ -511,41 +599,48 @@ export function mountScene(container) {
     set(people.trainee.gaze, 'transform', `translate(${progress * .65} ${mix(1.1, -.3, progress)})`);
     const talk = frame.speaker === 'trainee' && frame.speech ? Math.sin(time * 11) * .9 * ambient : 0;
     set(people.trainee.mouth, 'd', `M402 250Q409 ${253 + talk} 416 249`);
-    nodes.guides.style.display = frame.showGuides ? '' : 'none';
+    nodes.guides.style.display = frame.showGuides && !frame.noHints ? '' : 'none';
     const pathPoints = Array.from({ length: 81 }, (_, i) => servingPose(frame, i / 80, elder, shoulder).tip);
     set(nodes['target-path'], 'd', pathPoints.map((p, i) => `${i ? 'L' : 'M'}${point(p)}`).join(' '));
     set(nodes['target-stop'], 'transform', `translate(${point(pathPoints.at(-1))})`);
-    nodes['target-label'].textContent = frame.posture < .85 ? '先调整姿势 · 暂不入口' : frame.handBlock > .1 ? '抬手拒绝 · 留出空间' : '嘴前停留区';
+    const targetLabel = frame.noHints ? '' : frame.posture < .85 || frame.phase === 'position' ? text.positionTarget : frame.handBlock > .1 ? text.blockTarget
+      : frame.headTurn >= .15 ? text.turnTarget : frame.mouth <= .25 ? text.closedTarget : text.target;
+    fitLabel(nodes['target-label'], targetLabel, 190);
+    set(nodes['target-stop'], 'aria-label', targetLabel);
     set(nodes.bones, 'd', `M${point(pose.shoulder)}L${point(pose.elbow)}L${point(pose.wrist)}`);
     for (const key of Object.keys(joints)) { set(joints[key], 'cx', pose[key].x); set(joints[key], 'cy', pose[key].y); }
-    if (!frame.showTrails) history = [];
+    if (!frame.showTrails || frame.noHints) history = [];
     else if (timestamp - lastTrailTime >= 32) {
       lastTrailTime = timestamp;
       const previous = history.at(-1);
       if (!previous || Math.hypot(previous.x - tip.x, previous.y - tip.y) > .8) history.push({ ...tip, time: timestamp });
     }
     history = history.filter(p => timestamp - p.time < 5000).slice(-120);
-    nodes.trail.style.display = frame.showTrails ? '' : 'none';
+    nodes.trail.style.display = frame.showTrails && !frame.noHints ? '' : 'none';
     set(nodes.trail, 'd', history.map((p, i) => `${i ? 'L' : 'M'}${point(p)}`).join(' '));
     set(nodes.drag, 'transform', `translate(${point(pose.wrist)})`);
     set(nodes.drag, 'aria-valuenow', Math.round(progress * 100));
-    set(nodes.drag, 'aria-valuetext', `送勺 ${Math.round(progress * 100)}%，${frame.posture < .85 ? '姿势未就绪，暂不入口' : frame.handBlock > .1 ? '抬手阻挡，停在手前' : phases[frame.phase][0]}`);
+    const status = frame.posture < .85 || frame.phase === 'position' ? text.positionStatus : frame.handBlock > .1 ? text.blockStatus
+      : frame.headTurn >= .15 ? text.turnStatus : frame.mouth <= .25 ? text.closedStatus : '';
+    set(nodes.drag, 'aria-valuetext', frame.noHints ? movementLabel : text.progress(Math.round(progress * 100), `${phase.join(' / ')}${status ? `; ${status}` : ''}`));
     root.classList.toggle('care-scene-selected', frame.selected);
     root.classList.toggle('care-scene-dragging', activePointer !== null);
     root.dataset.phase = frame.phase;
     root.dataset.positioned = String(frame.posture >= .85);
     root.dataset.posture = String(frame.posture);
     root.dataset.contact = String(contact);
-    if (lastPhase !== frame.phase) {
+    if (lastPhase !== frame.phase || labelsChanged) {
       lastPhase = frame.phase;
-      nodes['phase-label'].textContent = phases[frame.phase][0];
-      nodes['phase-hint'].textContent = phases[frame.phase][1];
+      fitLabel(nodes['phase-label'], frame.noHints ? motionPhases[frame.locale][frame.phase] : phase[0], 400);
+      set(nodes['phase-label'], 'y', frame.noHints ? 4 : -6);
+      fitLabel(nodes['phase-hint'], frame.noHints ? '' : phase[1], 400);
     }
-    if (lastSpeech !== frame.speech || lastSpeaker !== frame.speaker) {
+    if (lastSpeech !== frame.speech || lastSpeaker !== frame.speaker || labelsChanged) {
       lastSpeech = frame.speech; lastSpeaker = frame.speaker;
-      feedback.hidden = !frame.speech;
-      feedbackText.textContent = frame.speech;
-      feedbackName.textContent = frame.speaker === 'elder' ? '周阿姨' : frame.speaker === 'trainee' ? '你' : '';
+      feedback.hidden = frame.noHints || !frame.speech;
+      feedbackText.textContent = frame.noHints ? '' : frame.speech;
+      feedbackName.textContent = frame.speaker === 'elder' ? frame.seniorName : frame.speaker === 'trainee' ? text.you : '';
+      feedbackName.title = feedbackName.textContent;
       feedbackName.hidden = !frame.speaker;
       feedback.dataset.speaker = frame.speaker || '';
     }

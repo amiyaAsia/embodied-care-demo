@@ -45,6 +45,15 @@
 .care-scene .care-scene-name-elder circle { fill: #a3889b; }
 .care-scene .care-scene-name-elder text { fill: #806c7c; }
 
+/* Compact English labels fit the same SVG slots as their Chinese counterparts. */
+.care-scene[data-locale="en"] { font-family: system-ui, "Segoe UI", sans-serif; }
+.care-scene[data-locale="en"] .care-scene-room-label { letter-spacing: .5px; }
+.care-scene[data-locale="en"] .care-scene-name text { font-size: 12px; letter-spacing: 0; }
+.care-scene[data-locale="en"] .care-scene-bed-label text,
+.care-scene[data-locale="en"] .care-scene-cart-label,
+.care-scene[data-locale="en"] .care-scene-guides text { letter-spacing: 0; }
+.care-scene[data-locale="en"] .care-scene-stage [data-part="phase-hint"] { font-size: 11px; }
+
 .care-scene .care-scene-bed,
 .care-scene .care-scene-bedding,
 .care-scene .care-scene-table { pointer-events: none; }
@@ -158,6 +167,11 @@
 .care-scene.care-scene-disabled .care-scene-drag-ring,
 .care-scene.care-scene-disabled .care-scene-drag-arrows { opacity: 0; }
 
+/* Keep the transparent wrist hit area and keyboard focus indicator interactive. */
+.care-scene.care-scene-no-hints .care-scene-drag-ring,
+.care-scene.care-scene-no-hints .care-scene-drag-arrows,
+.care-scene.care-scene-no-hints [data-part="phase-hint"] { display: none; }
+
 .care-scene .care-scene-stage rect { fill: #fbf9ed; fill-opacity: .88; stroke: #d4d8c5; }
 .care-scene .care-scene-stage circle { fill: #719681; }
 .care-scene .care-scene-stage text { font-size: 12px; fill: #6c7b69; }
@@ -199,7 +213,16 @@
 }
 .care-scene .care-scene-feedback[hidden],
 .care-scene .care-scene-feedback-speaker[hidden] { display: none; }
-.care-scene .care-scene-feedback-speaker { flex: 0 0 auto; color: #427d69; font-weight: 700; }
+.care-scene .care-scene-feedback-speaker {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 30%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #427d69;
+  font-weight: 700;
+}
 .care-scene .care-scene-feedback-text { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .care-scene .care-scene-feedback[data-speaker="elder"] .care-scene-feedback-speaker { color: #8c7084; }
 

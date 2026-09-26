@@ -1,4 +1,4 @@
-name: Test and deploy CareLab
+name: Test and deploy Amiya Care Practice
 
 on:
   push:

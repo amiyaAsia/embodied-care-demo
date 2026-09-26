@@ -1,67 +1,34 @@
 <!doctype html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#236c65"><title>CareLab · 具身护工训练室</title>
-  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="scene.css">
-</head>
+<html lang="en-SG">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#236c65"><title>Amiya Care Practice</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="scene.css"><link rel="stylesheet" href="practice.css"></head>
 <body>
-  <aside class="rail" aria-label="训练导航">
-    <a class="brand" href="./" aria-label="CareLab 首页">c<span>+</span></a>
-    <div class="rail-line"></div>
-    <button class="rail-item active" id="trainingNav" title="训练室"><span>◈</span><small>训练室</small></button>
-    <button class="rail-item" id="caseNav" title="案例简报"><span>▤</span><small>案例</small></button>
-    <button class="rail-item" id="reviewNav" title="训练复盘"><span>▥</span><small>复盘</small></button>
-    <div class="rail-bottom"><span class="avatar">你</span><small>受训护工</small></div>
-  </aside>
-  <div class="shell">
-    <header class="topbar">
-      <div class="breadcrumb">CareLab <span>/</span> 康养照护实训 <span>/</span> <strong>具身训练室</strong></div>
-      <div class="header-actions"><span class="local-tag"><i></i> 本地交互模拟</span><button class="text-button" id="resetButton">↻ 重新训练</button><button class="outline-button" id="reviewButton">查看复盘 <span>↗</span></button></div>
-    </header>
-    <main>
-      <section class="page-title">
-        <div><div class="eyebrow">EMBODIED CARE TRAINING <span>CASE 02 · BEDSIDE CARE</span></div><h1>床旁进餐，先安顿好她<span class="level-tag">烦躁长者 · 床旁照护</span></h1><p>从歪靠床上的烦躁与拒食，到有支撑的姿势、被尊重的进餐节奏。</p></div>
-        <button class="demo-button" id="demoButton"><span>▶</span> 看一段完整训练</button>
-      </section>
-      <div class="workspace">
-        <section class="conversation panel" aria-label="多轮训练对话">
-          <div class="conversation-head"><div><span class="heading-dot"></span><h2>训练对话</h2><span class="count-badge" id="turnCount">第 0 轮</span></div><span class="quiet-label">教学 × 行动</span></div>
-           <div class="case-mini"><div class="case-avatar">周</div><div><strong>周阿姨 <span>76 岁 · 歪靠床上</span></strong><p>身体下滑、头偏一侧；烦躁抿嘴，勺近时抬手。</p></div><button class="info-button" id="caseButton" aria-label="查看案例">i</button></div>
-          <div class="chat-feed" id="chatFeed" role="log" aria-label="对话和教练反馈"></div>
-          <div class="composer-area">
-            <div class="suggestion-label">试着这样引导 <span>可点击，也可自由输入</span></div>
-            <div class="suggestions" id="suggestions"></div>
-            <form id="chatForm" class="composer"><label for="messageInput" class="sr-only">对周阿姨说的话</label><textarea id="messageInput" rows="2" maxlength="500" placeholder="对周阿姨说些什么，或描述你的观察…"></textarea><div class="composer-footer"><span>文字对话 · Enter 发送</span><button id="sendButton" type="submit" aria-label="发送">↑</button></div></form>
-            <div class="composer-note">练习照护判断与操作，不以进食量评定成绩。</div>
-          </div>
-        </section>
-        <section class="training-column" aria-label="动作训练与反馈">
-          <section class="stage-card panel">
-            <div class="stage-head"><div><span class="live-dot"></span><strong>烦躁长者进餐协助</strong><span class="divider">/</span><span>取食 · 等待 · 回应</span></div><div class="scene-toggles"><label><input id="guidesToggle" type="checkbox" checked> 关节辅助</label><label><input id="trailsToggle" type="checkbox" checked> 勺尖轨迹</label><button id="voiceButton" title="切换浏览器语音朗读" aria-pressed="false">语音 关</button></div></div>
-            <div class="scene-wrapper"><div id="sceneMount"></div><div class="scene-corner"><span class="scene-chip" id="modeChip">交互演练</span><span class="scene-chip faint">敬老院 · 床旁午餐</span></div><div class="phase-chip" id="phaseChip"><i></i> 观察床上姿势与拒食信号</div><div class="scene-observation" id="sceneObservation"><span>观察点</span><strong>歪靠 · 下滑 · 头偏一侧 · 抿嘴拒食</strong></div></div>
-            <div class="phase-strip"><div class="phase-step" data-phase="scoop"><span>01</span> 取食</div><div class="phase-step" data-phase="approach"><span>02</span> 递勺</div><div class="phase-step" data-phase="wait"><span>03</span> 等待</div><div class="phase-step" data-phase="withdraw"><span>04</span> 撤勺</div><div class="phase-step" data-phase="swallow"><span>05</span> 咽后</div><div class="phase-progress"><i id="motionProgress"></i></div><span id="motionTime">0.0 s</span></div>
-          </section>
-          <section class="action-card panel">
-            <div class="section-heading"><h2>你的喂食动作</h2><span class="subtle">参数仅用于虚拟案例，不是临床喂食标准</span></div>
-            <div class="sliders"><label>每勺分量 <output id="amplitudeValue">75%</output><input id="amplitude" type="range" min="10" max="100" value="75" step="5"><span>少量软食 <span>满勺</span></span></label><label>递勺用时 <output id="tempoValue">1.5 s</output><input id="tempo" type="range" min="1" max="6" value="1.5" step="0.5"><span>急促 <span>缓慢平稳</span></span></label><label>口前等待 <output id="holdValue">0.5 s</output><input id="hold" type="range" min="0" max="5" value="0.5" step="0.5"><span>立即递送 <span>留出回应时间</span></span></label></div>
-            <div class="position-action"><button class="outline-button" id="positionButton">↗ 调整床头 / 整理靠枕</button><span>先安顿头颈与躯干，再准备进食。</span></div>
-            <div class="action-buttons"><button class="primary-button" id="practiceButton">▶ 尝试递一勺 · 观察反应</button><button class="outline-button" id="recordButton">◎ 手动递勺</button><button class="text-button" id="restButton">↶ 撤勺 / 暂停</button></div>
-            <div id="recordHint" class="record-hint" hidden>拖动持勺手腕：从碗边递向口前、停一下、再撤回。拒绝时不追着嘴喂；完成后提交操作。</div>
-          </section>
-          <section class="coach-panel panel">
-            <div class="section-heading"><h2><span class="coach-icon">✦</span> 培训教练 <span class="count-badge">评价照护过程，不评进食量</span></h2><button class="text-button small" id="referenceButton">看分解动作 ↗</button></div>
-            <div class="coach-summary"><div class="score-ring" id="scoreRing"><strong id="teachingScore">0</strong><span>照护完成度</span></div><div class="coach-main"><strong id="coachTitle">不急着喂进去，先让她愿意被协助。</strong><p id="coachText">观察闭口与转头，回应温度和意愿，再调整分量、递勺与等待。</p><div class="skill-checks" id="skillChecks"></div></div></div>
-            <div class="metric-grid"><div><span>接受意愿 <small>模拟</small></span><strong id="metricMatch">—</strong><div class="mini-track"><i id="matchBar"></i></div></div><div><span>本次口前等待</span><strong id="metricLag">—</strong><small>不是吞咽完成检测</small></div><div><span>操作压迫感 <small>模拟</small></span><strong id="metricComp">—</strong><div class="mini-track amber"><i id="compBar"></i></div></div><div><span>长者烦躁 <small>模拟</small></span><strong id="metricFatigue">78<span>/100</span></strong><div class="mini-track amber"><i id="fatigueBar" style="width:78%"></i></div></div></div>
-            <div class="round-comparison" id="roundComparison" hidden></div>
-          </section>
-        </section>
-      </div>
-      <footer class="page-footer"><span><i></i> AnnaAgent-inspired · Embodied simulation</span><span>本地规则引擎 + 程序化动作 · 非摄像头动作捕捉 · 非临床评估</span></footer>
-    </main>
-  </div>
-  <dialog id="detailDialog"><div class="dialog-top"><span class="eyebrow" id="dialogEyebrow">TRAINING BRIEF</span><button id="closeDialog" aria-label="关闭">×</button></div><div id="dialogContent"></div></dialog>
-  <div id="toast" class="toast" role="status" hidden></div>
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+<aside class="rail" aria-label="Amiya Care Practice"><a class="brand" href="./" aria-label="Amiya Care Practice">a<span>+</span></a><div class="rail-line"></div><button class="rail-item active" id="trainingNav"><span>◈</span><small data-en="Practice" data-zh="练习"></small></button><button class="rail-item" id="caseNav"><span>▤</span><small data-en="Care plan" data-zh="照护计划"></small></button><button class="rail-item" id="reviewNav"><span>▥</span><small data-en="Recap" data-zh="复盘"></small></button><div class="rail-bottom"><span class="avatar">A</span><small data-en="Care practice" data-zh="照护练习"></small></div></aside>
+<div class="shell"><header class="topbar"><div class="breadcrumb"><strong>Amiya Care Practice</strong><span>/</span><span data-en="Learning through care encounters" data-zh="在照护情境中学习"></span></div><div class="header-actions"><div class="language-switch" aria-label="Language"><button id="langEn" aria-pressed="true">English</button><button id="langZh" aria-pressed="false">中文</button></div><button id="resetButton" class="text-button" data-en="↻ Restart encounter" data-zh="↻ 重开本次情境"></button><button id="reviewButton" class="outline-button" data-en="Learner recap ↗" data-zh="学员复盘 ↗"></button></div></header>
+<main>
+<section class="page-title"><div><div class="eyebrow" data-en="AMIYA CARE PRACTICE / MEALTIME" data-zh="AMIYA CARE PRACTICE / 进餐照护"></div><h1 data-en="Understand her concern. Agree on the next step." data-zh="理解她的顾虑，商定下一步。"></h1><p data-en="Browser-based animated practice. No connected equipment, measured physical performance or clinical certification." data-zh="浏览器动画练习，不连接实体设备，不测量身体表现，也不作临床认证。"></p></div></section>
+<nav class="learning-path" id="learningPath" aria-label="Learning pathway"></nav>
+<div class="loop-notice" id="loopNotice"></div>
+<div id="encounterArea" class="workspace">
+<section class="conversation panel"><div class="conversation-head"><div><span class="heading-dot"></span><h2 data-en="Care conversation" data-zh="照护对话"></h2><span class="count-badge" id="turnCount"></span></div><span id="encounterMode" class="quiet-label"></span></div>
+<div class="case-mini"><div class="case-avatar" id="caseAvatar">Z</div><div><strong id="caseName"></strong><p id="caseSummary"></p></div><button class="info-button" id="caseButton" aria-label="Care plan">i</button></div>
+<div id="historyContext" class="returning-context" hidden></div>
+<div class="chat-feed" id="chatFeed" role="log" aria-live="polite"></div>
+<div class="composer-area"><div id="suggestionArea"><div class="suggestion-label" data-en="Practice prompts · or use your own words" data-zh="练习提示 · 也可用自己的话表达"></div><div class="suggestions" id="suggestions"></div></div><p class="check-notice" id="checkNotice" hidden data-en="Unfamiliar check: no prompts, coaching or live evidence. Use your own words; feedback is held for the reviewer." data-zh="陌生情境检查：不提供提示、教练反馈或即时证据。请自主表达，由审核者查看结果。"></p>
+<form class="composer" id="chatForm"><label for="messageInput" class="sr-only" data-en="Your response to the senior" data-zh="对长者说的话"></label><textarea id="messageInput" rows="2" maxlength="800"></textarea><div class="composer-footer"><span data-en="Text input · Enter to send" data-zh="文字输入 · 回车发送"></span><button type="submit" id="sendButton" aria-label="Send">↑</button></div></form><div class="composer-note" data-en="Read aloud is text-to-speech, not voice conversation." data-zh="朗读是文字转语音，不是语音对话。"></div></div></section>
+<section class="training-column">
+<section class="stage-card panel"><div class="stage-head"><div><span class="live-dot"></span><strong data-en="Illustrative bedside encounter" data-zh="床旁照护动画示意"></strong></div><div class="scene-toggles"><label><input id="guidesToggle" type="checkbox"><span data-en="Guides" data-zh="辅助线"></span></label><label><input id="trailsToggle" type="checkbox"><span data-en="Trail" data-zh="轨迹"></span></label><button id="voiceButton" aria-pressed="false"></button></div></div>
+<div class="scene-wrapper"><div id="sceneMount"></div><div class="scene-corner"><span class="scene-chip" id="modeChip"></span></div><div class="phase-chip" id="phaseChip"></div></div><div class="phase-strip"><span id="phaseDescription"></span><div class="phase-progress"><i id="motionProgress"></i></div><span id="motionTime">0.0 s</span></div></section>
+<section class="action-card panel"><div class="section-heading"><h2 data-en="Animation controls" data-zh="动画控制"></h2><span class="subtle" data-en="Illustration only · not technique validation" data-zh="仅作示意 · 不验证操作技术"></span></div>
+<div class="sliders"><label><span data-en="Illustrated spoon load" data-zh="示意勺量"></span><output id="portionValue"></output><input id="portion" type="range" min="10" max="70" value="30" step="5"></label><label><span data-en="Approach duration" data-zh="递勺动画用时"></span><output id="paceValue"></output><input id="pace" type="range" min="2" max="6" value="3.5" step=".5"></label><label><span data-en="Illustrated wait" data-zh="示意等待时间"></span><output id="pauseValue"></output><input id="pause" type="range" min="1" max="4" value="2" step=".5"></label></div>
+<div class="position-action"><button class="outline-button guided" id="positionButton" data-en="Support position / pillows" data-zh="调整支撑姿势与靠枕"></button><span data-en="Fictional care plan CP-M01; practitioner review required." data-zh="虚构计划 CP-M01；需照护专业人员审核。"></span></div>
+<div class="action-buttons"><button id="practiceButton" class="primary-button" data-en="Play agreed assistance" data-zh="演示已商定的协助"></button><button id="recordButton" class="outline-button" data-en="Explore spoon movement" data-zh="探索递勺动作"></button><button id="restButton" class="text-button" data-en="Withdraw / stop" data-zh="撤勺 / 停止"></button></div>
+<p class="animation-note" data-en="Timers illustrate pacing; they do not detect swallowing or establish safety. You may pause without feeding." data-zh="计时仅演示节奏，不检测吞咽或判断安全。不进行喂食也可以正确完成暂停路径。"></p></section>
+<section id="coachPanel" class="coach-panel panel"><div class="section-heading"><h2 data-en="✦ Practice coach" data-zh="✦ 练习教练"></h2><span class="subtle" data-en="Observable behaviour, not synthetic scores" data-zh="可观察行为，不显示合成分数"></span></div><div class="evidence-summary"><strong id="coachTitle"></strong><p id="behaviorText"></p><p id="coachText"></p><div id="skillChecks" class="skill-checks"></div></div><div class="valid-endings" id="validEndings"></div></section>
+<section class="panel next-card"><div id="outcomeText"></div><button id="finishEncounter" class="primary-button"></button><div class="demo-actions" id="demoActions"><button class="text-button" id="demoButton"></button><button class="text-button" id="poorButton" data-en="Poor-response replay (labelled example)" data-zh="错误回应回放（明确标注示例）"></button></div></section>
+</section></div>
+<section id="serviceArea" hidden></section>
+<footer class="page-footer"><span>Amiya Care Practice</span><span data-en="Local rules engine · fictional care plan · session-only demonstration" data-zh="本地规则引擎 · 虚构照护计划 · 仅本次会话演示"></span></footer>
+</main></div>
+<dialog id="detailDialog"><div class="dialog-top"><span class="eyebrow" id="dialogEyebrow"></span><button id="closeDialog" aria-label="Close">×</button></div><div id="dialogContent"></div></dialog><div id="toast" class="toast" role="status" hidden></div>
+<script type="module" src="app.js"></script>
+</body></html>

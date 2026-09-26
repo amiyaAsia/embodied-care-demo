@@ -2,5 +2,5 @@
   "name": "embodied-care-training-demo",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node server.mjs", "build": "node build.mjs", "test": "node --test engine.test.js motion.test.js", "test:browser": "node browser-check.mjs" }
+  "scripts": { "start": "node server.mjs", "build": "node build.mjs", "test": "node --test practice-engine.test.js learning-loop.test.js", "test:browser": "node browser-check.mjs" }
 }
