@@ -9,7 +9,7 @@ const step = (id, kind, duration, text, scene, options = {}) => ({
   id, kind, speaker: null, text, action: null, duration, view: scene,
   cutaway: null, ...options,
 });
-const refusal = () => view({ mood: 'resistant', bowl: 'away', gesture: 'push-bowl', push: 0.3 });
+const refusal = () => view({ mood: 'resistant', bowl: 'away', gesture: 'push-bowl', push: 0.3, beat: 'raise-hand' });
 const pause = () => view({ mood: 'settled', bowl: 'away' });
 
 export const OVERVIEW = {
@@ -30,7 +30,7 @@ export const OVERVIEW = {
     }),
     step('overview-harder-refusal', 'dialogue', 4000, copy(
       'No. Stop!', '不。停下！'),
-    view({ mood: 'resistant', bowl: 'away', worker: 'near', gesture: 'push-bowl', push: 1, recoil: 1, workerLean: 1 }), {
+    view({ mood: 'resistant', bowl: 'away', worker: 'near', gesture: 'push-bowl', push: 1, recoil: 1, workerLean: 1, beat: 'raise-hand' }), {
       speaker: 'Ms Tan', action: copy('Ms Tan recoils; bowl moves farther.', '陈女士缩身后退，把碗推得更远。'),
     }),
     step('overview-rewind', 'action', 2500, copy(
@@ -40,7 +40,7 @@ export const OVERVIEW = {
     step('overview-hello', 'dialogue', 4000, copy(
       'Hello Ms Tan, I’m Hui Lin. Shall I leave it here?',
       '陈女士，您好，我是慧琳。要把碗留在这里吗？'),
-    view({ mood: 'resistant', bowl: 'away', gesture: 'listen' }), { speaker: 'Hui Lin' }),
+    view({ mood: 'resistant', bowl: 'away', gesture: 'listen', beat: 'ask' }), { speaker: 'Hui Lin' }),
     step('overview-programme', 'dialogue', 4000, copy(
       'Yes. I want to finish this programme.', '是的。我想看完这个节目。'),
     view({ bowl: 'away' }), { speaker: 'Ms Tan' }),
