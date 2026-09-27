@@ -38,16 +38,16 @@ export const CHAPTERS = [
     focus: copy('Hui Lin and Ms Tan · Respecting a pause', '慧琳与陈女士 · 尊重暂停'),
     steps: [
       step('practice-refusal', 'dialogue', copy("Leave it there. I've already eaten.", '放在那里吧。我已经吃过了。'),
-      { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'push-bowl', beat: 'raise-hand' }, {
+      { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'push-bowl', beat: 'wave-off' }, {
         speaker: 'Ms Tan', duration: 9000,
         action: copy('Ms Tan slides the bowl away and turns towards the television.', '陈女士把碗推远，转向电视。'),
       }),
       step('practice-hello', 'dialogue', copy(
         'Hello Ms Tan, it’s Hui Lin. Would you like me to leave the bowl here?',
         '陈女士，您好，我是慧琳。您希望我把碗留在这里吗？'),
-      { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'listen', beat: 'ask' }, { speaker: 'Hui Lin' }),
+      { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'listen', beat: ['chest', 'ask'] }, { speaker: 'Hui Lin' }),
       step('practice-programme', 'dialogue', copy('Yes. I want to finish this programme.', '是的。我想看完这个节目。'),
-      { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }, { speaker: 'Ms Tan', duration: 9000 }),
+      { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'none', beat: 'point-tv' }, { speaker: 'Ms Tan', duration: 9000 }),
       step('practice-ask-return', 'dialogue', copy('All right. Would you like me to come back afterwards?', '好的。您希望我等节目结束后再来吗？'),
       { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'back', gaze: 'worker', tv: true, gesture: 'listen' }, { speaker: 'Hui Lin', duration: 9000 }),
       step('practice-agreement', 'dialogue', copy(
@@ -83,7 +83,7 @@ export const CHAPTERS = [
       { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'back', gaze: 'worker', tv: true, gesture: 'open-palm' }, { speaker: 'Ms Tan', duration: 9000 }),
       step('returning-question', 'dialogue', copy(
         'Hello Ms Tan, it’s Hui Lin. There’s no rush. What would you like now?', '陈女士，您好，我是慧琳。不着急。您现在想怎样安排？'),
-      { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'back', gaze: 'worker', tv: true, gesture: 'listen', beat: 'ask' }, { speaker: 'Hui Lin', duration: 9000 }),
+      { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'back', gaze: 'worker', tv: true, gesture: 'listen', beat: ['chest', 'ask'] }, { speaker: 'Hui Lin', duration: 9000 }),
       step('returning-wishes', 'dialogue', copy(
         'I’d like to eat by myself. Please set the bowl and spoon within reach. Leave the television on.',
         '我想自己吃。请把碗和勺子放到我够得到的地方。电视就开着吧。'),
@@ -114,7 +114,7 @@ export const CHAPTERS = [
       step('check-response', 'dialogue', copy(
         'Hello Mr Lim, I’m Hui Lin. I don’t know what’s in it. Shall we check with the responsible staff?',
         '林先生，您好，我是慧琳。我不清楚里面有什么。我们一起请负责的同事确认，好吗？'),
-      { senior: 'lim', mood: 'neutral', bowl: 'near', worker: 'near', gaze: 'worker', tv: false, gesture: 'listen', beat: 'ask' }, { speaker: 'Hui Lin' }),
+      { senior: 'lim', mood: 'neutral', bowl: 'near', worker: 'near', gaze: 'worker', tv: false, gesture: 'listen', beat: ['chest', 'ask'] }, { speaker: 'Hui Lin' }),
       step('check-choice', 'dialogue', copy(
         'Yes, find out for me. Then I’ll choose. Please leave the bowl where it is.', '好，请帮我问清楚。我之后再选。请把碗留在原处。'),
       { senior: 'lim', mood: 'settled', bowl: 'near', worker: 'near', gaze: 'worker', tv: false, gesture: 'none' }, { speaker: 'Mr Lim', duration: 9000 }),
@@ -199,7 +199,7 @@ export const CHAPTERS = [
       { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'near', gaze: 'tv', tv: true, gesture: 'none' }),
       step('refresher-refusal', 'dialogue', copy(
         'No, not now. I said no. Please leave it there until the programme ends.', '不，现在不吃。我已经说过不了。请把它留在那里，等节目结束再说。'),
-      { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'near', gaze: 'tv', tv: true, gesture: 'push-bowl', beat: 'raise-hand' }, { speaker: 'Ms Tan', duration: 9000 }),
+      { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'near', gaze: 'tv', tv: true, gesture: 'push-bowl', beat: 'wave-off' }, { speaker: 'Ms Tan', duration: 9000 }),
       step('refresher-acknowledge', 'dialogue', copy(
         'All right, I’ll stop. I’ll leave it there and come back after the programme, as you asked.', '好的，我停下来。我把它留在那里，按您的意思，节目结束后再来。'),
       { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'near', gaze: 'tv', tv: true, gesture: 'listen' }, { speaker: 'Hui Lin', duration: 9000 }),

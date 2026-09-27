@@ -18,20 +18,48 @@ const phase = (t, from, to) => clamp((t - from) / (to - from));
 const point = p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
 const between = (a, b, t) => ({ x: mix(a.x, b.x, t), y: mix(a.y, b.y, t) });
 const DEFAULT_VIEW = Object.freeze({ senior: 'tan', mood: 'neutral', bowl: 'near',
-  worker: 'near', gaze: 'tv', tv: true, gesture: 'none', push: 0, recoil: 0, workerLean: 0 });
+  worker: 'near', gaze: 'tv', tv: true, gesture: 'none', push: 0, recoil: 0, workerLean: 0, beat: [] });
 const VALUES = {
   senior: ['tan', 'lim'], mood: ['neutral', 'resistant', 'settled'],
   bowl: ['near', 'away'], worker: ['near', 'back'], gaze: ['tv', 'worker', 'bowl'],
   gesture: ['none', 'push-bowl', 'open-palm', 'setup', 'withdraw', 'listen'],
 };
 // One-off gestures timed to a line of dialogue; they return to the view's pose.
-const BEATS = ['raise-hand', 'ask'];
-const BEAT_MS = 2600;
-const beatWeight = ms => ms < 250 ? 0 : ms < 750 ? settle((ms - 250) / 500)
-  : ms < 1900 ? 1 : ms < BEAT_MS ? 1 - ease((ms - 1900) / (BEAT_MS - 1900)) : 0;
-// Posture leads; hands arrive a little later (overlapping action).
-const BODY = ['back', 'workerLean', 'recoil', 'gaze', 'down'];
+// A view may chain beats, e.g. ['chest', 'ask']. Senior gestures run slower.
+const BEAT_MS = { chest: 1500, ask: 2200, 'raise-hand': 2600, 'wave-off': 3000, 'point-tv': 2800 };
+const BEATS = Object.keys(BEAT_MS);
+const SENIOR_BEATS = ['raise-hand', 'wave-off', 'point-tv'];
+// Older people move more slowly: senior transitions and gestures take ~30% longer.
+const SENIOR_PACE = 1.3;
+const beatLength = name => BEAT_MS[name] * (SENIOR_BEATS.includes(name) ? SENIOR_PACE : 1);
+// Rise with a slight overshoot, hold, then ease back. A chained beat starts as
+// the previous one begins to fall, so the hand travels straight between them.
+function envelope(ms, length) {
+  const rise = length * .22, fall = length * .3;
+  if (ms <= 0 || ms >= length) return 0;
+  return ms < rise ? settle(ms / rise) : ms < length - fall ? 1 : 1 - ease((ms - length + fall) / fall);
+}
+function beatWeights(list, ms) {
+  const weights = {};
+  let at = 200;
+  for (const name of list) {
+    weights[name] = Math.max(weights[name] || 0, envelope(ms - at, beatLength(name)));
+    at += beatLength(name) * .7;
+  }
+  return weights;
+}
+const beatsEnd = list => list.reduce((end, name, i) =>
+  Math.max(end, 200 + list.slice(0, i).reduce((n, b) => n + beatLength(b) * .7, 0) + beatLength(name)), 0);
+// Transition length scales with how far each person moves (short ~700ms, big ~1500ms).
+const WORKER_KEYS = ['back', 'workerLean', 'open', 'listen', 'withdraw', 'setup', 'spoon'];
+const SENIOR_KEYS = ['recoil', 'contact', 'away', 'push', 'release', 'resistant', 'settled', 'down', 'gaze'];
+const span = distance => 700 + 800 * clamp(distance);
+const moved = (a, b, keys) => Math.max(0, ...keys.map(key => Math.abs(b[key] - a[key]) / (key === 'gaze' ? 2 : 1)));
 const HANDS = ['open', 'listen', 'withdraw', 'setup'];
+// The hand's rotation trails the forearm slightly.
+const ANGLE_LAG = 100;
+// Upper arm longer than forearm, and the same for both arms of one person.
+const WORKER_ARM = [84, 76], ELDER_ARM = [78, 72];
 let serial = 0;
 
 // Exact two-link IK, including a reachable wrist. Bone lengths never stretch.
@@ -166,6 +194,7 @@ function worker(id) {
     <path d="M351 553Q365 561 380 553L385 568Q408 571 407 582Q388 591 349 581Z" fill="#e8e9db" stroke="#a3b3a5" stroke-width="2"/>
     <path d="M396 555Q411 563 425 556L432 570Q457 571 457 582Q430 593 393 582Z" fill="#f1f0e3" stroke="#a3b3a5" stroke-width="2"/>
     <path d="M353 579H401M398 580H451" stroke="#c0c9bb" stroke-width="3"/>
+    ${arm('worker-rest', id)}
     <g data-part="worker-torso">
       <path d="M333 294Q311 302 310 331L307 426Q347 444 397 429L405 336Q408 306 371 294Z" fill="url(#${id}-scrubs)" stroke="#3e776a" stroke-width="1.5"/>
       <path d="M338 277L336 303L351 321L369 300L366 275Z" fill="url(#${id}-skin)"/>
@@ -284,7 +313,7 @@ function sceneMarkup(id) {
   return `${definitions(id)}<title id="${id}-title" data-part="title"></title>
     <desc id="${id}-description" data-part="description"></desc>
     ${room(id)}${worker(id)}${senior(id)}${table(id)}
-    <g aria-hidden="true">${arm('worker-rest', id)}${arm('senior-rest', id, true)}
+    <g aria-hidden="true">${arm('senior-rest', id, true)}
       ${arm('senior-active', id, true)}${arm('worker-active', id)}
       <g data-part="spoon">
         <ellipse cx="1" cy="4" rx="36" ry="4" fill="#6e8d79" opacity=".15"/>
@@ -306,7 +335,8 @@ function normalize(view, previous) {
   for (const key of ['push', 'recoil', 'workerLean']) {
     next[key] = Number.isFinite(view?.[key]) ? clamp(view[key]) : 0;
   }
-  next.beat = BEATS.includes(view?.beat) ? view.beat : 'none';
+  const beats = Array.isArray(view?.beat) ? view.beat : [view?.beat];
+  next.beat = beats.filter(name => BEATS.includes(name));
   return next;
 }
 
@@ -321,7 +351,9 @@ function pose(view, spoon = 0) {
     listen: +(view.gesture === 'listen'), spoon,
     // After a push the fingertips let go of the rim. thrust and sway are
     // transient (always zero at rest): a lean into the push, and a lean back.
-    release: +(view.gesture === 'push-bowl' || view.push > 0), thrust: 0, sway: 0 };
+    release: +(view.gesture === 'push-bowl' || view.push > 0), thrust: 0, sway: 0,
+    // arcW/arcS lift a moving hand into an arc and are zero at rest.
+    arcW: 0, arcS: 0 };
 }
 
 function color(a, b, t) {
@@ -333,17 +365,19 @@ function color(a, b, t) {
  * @returns {{setView: Function, tick: Function, setLocale: Function, destroy: Function}}
  * setView accepts a full view (partial updates are also supported).
  * options.immediate snaps; options.reducedMotion persists until explicitly changed.
- * The first setView always snaps. Other transitions take 1800ms of supplied ticks.
+ * The first setView always snaps. Other transitions take 700-1500ms of supplied
+ * ticks, scaled by distance, with the senior about 30% slower.
  * Setup leaves the spoon in reach through subsequent listening/idle views. An
  * immediate view, a different senior, or refusal resets this prop for replay.
  * Optional push, recoil and workerLean are finite numbers clamped to [0, 1].
  * Omitted/invalid intensities reset to zero, including on partial updates.
- * push adds up to 40 SVG units of bowl travel with fingertip contact; recoil
+ * push adds up to 34 SVG units of bowl travel with fingertip contact; recoil
  * turns the torso/head away and tightens the closed-mouth refusal expression.
  * workerLean advances the worker's body and hand; back/withdraw gives space and
  * sits the worker back. Pushes reach, shove, glide and let go of the rim.
- * Optional beat ('raise-hand' | 'ask') plays one dialogue gesture per animated
- * view, then returns to the view's pose; snapped views skip it.
+ * Optional beat (a name or chain of 'chest', 'ask', 'raise-hand', 'wave-off',
+ * 'point-tv') plays dialogue gestures once per animated view, then returns to
+ * the view's pose; snapped views skip it.
  * The host owns dialogue, agreement/revisit meaning and immediate rewinds.
  */
 export function mountTourScene(container) {
@@ -367,8 +401,9 @@ export function mountTourScene(container) {
   const parts = Object.fromEntries([...svg.querySelectorAll('[data-part]')]
     .map(node => [node.getAttribute('data-part'), node]));
   let view = { ...DEFAULT_VIEW }, frame = pose(view), start = { ...frame }, target = { ...frame };
+  let spans = { worker: DURATION, senior: DURATION, total: DURATION }, moves = { worker: 0, senior: 0 }, shove = false;
   let elapsed = DURATION, clock = 0, initialized = false, reducedMotion = false, destroyed = false;
-  let beat = 'none', beatElapsed = BEAT_MS;
+  let beats = [], beatElapsed = 0, angles = { ...frame };
   let locale = 'en';
   const attr = (name, key, value) => parts[name].setAttribute(key, String(value));
 
@@ -391,8 +426,8 @@ export function mountTourScene(container) {
     const enDesc = `A warm, window-lit shared lounge. Young care worker Hui Lin wears green and sits on a stool to the left. ${name} sits upright in an armchair to the right, ${moodEn}. A low table holds lunch and a separate spoon. ${gestureEn} The bowl is ${view.bowl === 'near' ? 'near the senior' : 'away, towards the centre'}. Hui Lin sits ${view.worker === 'back' ? 'further back' : 'nearby'}. The senior looks towards ${view.gaze === 'tv' ? 'the television' : view.gaze === 'worker' ? 'Hui Lin' : 'the bowl'}. ${view.tv ? 'The television shows an abstract cooking programme.' : 'The television is off.'} Fixed camera; no assisted feeding or spoon entering a mouth.`;
     const zhDesc = `温暖、窗边有植物的共享客厅。年轻女护工慧琳穿绿制服坐在左侧凳子上，${zhName}坐在右侧有靠背与扶手的椅子上，${moodZh}。中间的低餐桌摆着午餐和旁置的勺子。${gestureZh}碗${view.bowl === 'near' ? '靠近长者' : '已向左移到桌子中央'}，慧琳${view.worker === 'back' ? '稍向后退坐' : '坐在旁边'}。长者看向${view.gaze === 'tv' ? '电视' : view.gaze === 'worker' ? '慧琳' : '食物碗'}。${view.tv ? '电视播放抽象厨房烹饪节目。' : '电视已关闭。'}固定镜头，不喂食、不将勺子送入口中。`;
     parts.title.textContent = locale === 'zh' ? `${zh} / ${en}` : `${en} / ${zh}`;
-    const overviewEn = `${view.push > 0 ? ' The senior pushes the bowl further away.' : ''}${view.recoil > 0 ? ' The senior recoils and turns away with angry brows and a firmly closed mouth.' : ''}${view.workerLean > 0 && view.worker !== 'back' && view.gesture !== 'withdraw' && view.gesture !== 'setup' ? ' Hui Lin leans closer with her hand extended, without touching the senior.' : ''}${view.beat === 'raise-hand' ? ' The senior raises a hand, palm out.' : view.beat === 'ask' ? ' Hui Lin asks with an open palm.' : ''}`;
-    const overviewZh = `${view.push > 0 ? '长者把碗推得更远。' : ''}${view.recoil > 0 ? '长者身体后缩、转头避开，眉头紧皱、嘴巴紧闭。' : ''}${view.workerLean > 0 && view.worker !== 'back' && view.gesture !== 'withdraw' && view.gesture !== 'setup' ? '慧琳前倾靠近并伸手，但不触碰长者。' : ''}${view.beat === 'raise-hand' ? '长者抬起一只手，掌心向外。' : view.beat === 'ask' ? '慧琳摊开手掌询问。' : ''}`;
+    const overviewEn = `${view.push > 0 ? ' The senior pushes the bowl further away.' : ''}${view.recoil > 0 ? ' The senior recoils and turns away with angry brows and a firmly closed mouth.' : ''}${view.workerLean > 0 && view.worker !== 'back' && view.gesture !== 'withdraw' && view.gesture !== 'setup' ? ' Hui Lin leans closer with her hand extended, without touching the senior.' : ''}${view.beat.map(name => ({ chest: ' Hui Lin puts a hand to her chest as she introduces herself.', ask: ' Hui Lin asks with an open palm.', 'raise-hand': ' The senior raises a hand, palm out.', 'wave-off': ' The senior waves the offer away.', 'point-tv': ' The senior points at the television.' })[name]).join('')}`;
+    const overviewZh = `${view.push > 0 ? '长者把碗推得更远。' : ''}${view.recoil > 0 ? '长者身体后缩、转头避开，眉头紧皱、嘴巴紧闭。' : ''}${view.workerLean > 0 && view.worker !== 'back' && view.gesture !== 'withdraw' && view.gesture !== 'setup' ? '慧琳前倾靠近并伸手，但不触碰长者。' : ''}${view.beat.map(name => ({ chest: '慧琳介绍自己时手放在胸前。', ask: '慧琳摊开手掌询问。', 'raise-hand': '长者抬起一只手，掌心向外。', 'wave-off': '长者摆手拒绝。', 'point-tv': '长者指向电视。' })[name]).join('')}`;
     parts.description.textContent = locale === 'zh' ? `${zhDesc}${overviewZh}\n${enDesc}${overviewEn}` : `${enDesc}${overviewEn}\n${zhDesc}${overviewZh}`;
     parts['programme-label'].textContent = locale === 'zh' ? '烹饪节目' : 'Cooking programme';
     if (locale === 'zh') parts['programme-label'].removeAttribute('textLength');
@@ -405,24 +440,28 @@ export function mountTourScene(container) {
     const { elbow, wrist: actual } = rig;
     attr(name, 'data-wrist', point(actual));
     attr(name, 'data-elbow', point(elbow));
-    attr(`${name}-upper`, 'd', limb(shoulder, elbow, elder ? 15 : 17, 11));
-    attr(`${name}-lower`, 'd', limb(elbow, actual, 11, 6.5));
-    const cuff = elder ? between(elbow, actual, .57) : between(shoulder, elbow, .63);
+    // How far the solved wrist falls short of the requested one (0 when reachable).
+    attr(name, 'data-reach-miss', Math.hypot(actual.x - wrist.x, actual.y - wrist.y).toFixed(1));
+    attr(`${name}-upper`, 'd', limb(shoulder, elbow, elder ? 12 : 12.5, elder ? 9 : 9.5));
+    attr(`${name}-lower`, 'd', limb(elbow, actual, elder ? 9 : 9.5, elder ? 6.5 : 7));
+    // Sleeves hug the arm: a short scrub sleeve, or a cardigan to the forearm.
+    const cuff = elder ? between(elbow, actual, .6) : between(shoulder, elbow, .52);
     attr(`${name}-sleeve`, 'd', elder
-      ? `${limb(shoulder, elbow, 19, 14)}${limb(elbow, cuff, 14, 11)}`
-      : limb(shoulder, cuff, 21, 17));
+      ? `${limb(shoulder, elbow, 14, 11.5)}${limb(elbow, cuff, 11.5, 10)}`
+      : limb(shoulder, cuff, 15.5, 13.5));
     const previous = elder ? elbow : shoulder;
     const distance = Math.hypot(cuff.x - previous.x, cuff.y - previous.y) || 1;
     const nx = -(cuff.y - previous.y) / distance, ny = (cuff.x - previous.x) / distance;
-    const r = elder ? 10 : 16;
+    const r = elder ? 10 : 13.5;
     attr(`${name}-cuff`, 'd', `M${point({ x: cuff.x + nx * r, y: cuff.y + ny * r })}L${point({ x: cuff.x - nx * r, y: cuff.y - ny * r })}`);
-    attr(`${name}-hand`, 'transform', `translate(${point(actual)}) rotate(${handAngle.toFixed(2)})`);
+    attr(`${name}-hand`, 'transform', `translate(${point(actual)}) rotate(${handAngle.toFixed(2)}) scale(${elder ? 1.15 : 1.2})`);
   }
 
   function render() {
-    const f = frame;
-    const raise = beat === 'raise-hand' ? beatWeight(beatElapsed) : 0;
-    const ask = beat === 'ask' ? beatWeight(beatElapsed) : 0;
+    const f = frame, g = angles;
+    const bw = beatWeights(beats, beatElapsed), bg = beatWeights(beats, beatElapsed - ANGLE_LAG);
+    const weight = (w, name) => w[name] || 0;
+    const arc = w => Math.sin(Math.PI * clamp(w));
     const breath = reducedMotion ? 0 : Math.sin(clock * Math.PI * 2 / 4400) * .85;
     const elderBreath = reducedMotion ? 0 : Math.sin(clock * Math.PI * 2 / 4900 + .8) * .65;
     // All offsets are subject motion. The viewBox and room never move.
@@ -478,46 +517,77 @@ export function mountTourScene(container) {
     eyelids('senior-eyes', 246, blink(5380, 2900) * (1 - .25 * f.recoil));
     attr('programme', 'opacity', f.tv);
     // Maximum travel keeps the whole bowl on the tabletop and the contact wrist
-    // within the 83 + 84 arm reach, including full recoil and breathing.
-    const bowlX = mix(632, 566, f.away) - 40 * f.push;
+    // within the senior's reach, including breathing.
+    const bowlX = mix(632, 566, f.away) - 34 * f.push;
     const spoonX = mix(531, 580, f.spoon);
     attr('bowl', 'transform', `translate(${bowlX.toFixed(2)} 388)`);
     attr('spoon', 'transform', `translate(${spoonX.toFixed(2)} 417) rotate(-8)`);
 
-    const shoulder = workerShoulder(397, 330);
-    let workerWrist = { x: 356 + dx, y: 428 };
-    workerWrist = between(workerWrist, { x: 510 + dx, y: 355 }, f.open);
-    workerWrist = between(workerWrist, { x: 493 + dx, y: 390 }, f.listen);
-    workerWrist = between(workerWrist, { x: spoonX - 28, y: 410 }, f.setup);
+    // The shoulder leads a reach: forward and slightly up as the arm extends.
+    const lead = (p, k, direction = 1) => ({ x: p.x + 4 * k * direction, y: p.y - 3 * k });
+    const chest = weight(bw, 'chest'), ask = weight(bw, 'ask');
+    const reachOut = Math.max(f.open, pressure, f.setup, .5 * f.listen, ask);
+    const shoulder = lead(workerShoulder(390, 322), reachOut);
+    // Rest: the upper arm hangs at her side and the hand lies on her knee.
+    // Targets keep a bend at the elbow; none needs a fully straight arm.
+    let workerWrist = { x: 440 + dx, y: 452 };
+    workerWrist = between(workerWrist, { x: 505 + dx, y: 360 }, f.open);
+    workerWrist = between(workerWrist, { x: 488 + dx, y: 392 }, f.listen);
+    workerWrist = between(workerWrist, { x: spoonX - 34, y: 410 }, f.setup);
     // Pressure keeps an open hand below the chest, beside the bowl's left rim.
     // Stop fingertips short of the bowl even at maximum push; do not raise the
     // wrist towards the face when the leaned shoulder approaches the target.
-    // Returning to back/withdraw lowers the hand to the lap with the body retreat.
-    workerWrist = between(workerWrist, { x: Math.min(500 + dx, bowlX - 84), y: 388 }, pressure);
-    workerWrist = between(workerWrist, { x: 372 + dx, y: 413 }, f.withdraw);
-    let angle = mix(22, -25, f.open);
-    angle = mix(angle, -10, f.listen);
-    angle = mix(angle, 0, f.setup);
-    angle = mix(angle, -8, pressure);
-    angle = mix(angle, 36, f.withdraw);
-    // Asking beat: an open palm at chest height, then back to the view's pose.
+    // Returning to back/withdraw lowers the hand to the thigh with the body retreat.
+    workerWrist = between(workerWrist, { x: Math.min(495 + dx, bowlX - 84), y: 388 }, pressure);
+    workerWrist = between(workerWrist, { x: 424 + dx, y: 450 }, f.withdraw);
+    // Introduction beat: palm to her own chest; asking beat: an open palm.
+    workerWrist = between(workerWrist, workerShoulder(360, 372), chest);
     workerWrist = between(workerWrist, { x: 500 + dx, y: 366 }, ask);
-    angle = mix(angle, -22, ask);
-    // Keep the same low-elbow IK branch for every worker gesture, including
-    // intermediate listen/pressure frames. Blending opposite branches folds the
-    // upper arm across the face and makes the wrist leave its tabletop target.
-    drawArm('worker-active', shoulder, workerWrist, [96, 104], 1, angle);
-    drawArm('worker-rest', workerShoulder(323, 330), { x: 355 + dx, y: 419 }, [78, 76], 1, 18);
-    let elderWrist = { x: 719, y: 407 };
-    // Fingertips meet the bowl's right rim; pushing moves left, never towards a face.
-    // On release the hand lifts off in a small arc and rests just behind the rim.
-    const rim = { x: bowlX + 71 + 18 * f.release, y: 386 - 8 * Math.sin(Math.PI * clamp(f.release)) };
+    // Hands travel in arcs rather than straight lines.
+    workerWrist.y -= 12 * f.arcW + 10 * arc(ask) + 6 * arc(chest);
+    const gPressure = g.workerLean * (1 - Math.max(g.back, g.withdraw, g.setup));
+    let angle = mix(28, -25, g.open);
+    angle = mix(angle, -10, g.listen);
+    angle = mix(angle, 0, g.setup);
+    angle = mix(angle, -8, gPressure);
+    angle = mix(angle, 30, g.withdraw);
+    angle = mix(angle, -150, weight(bg, 'chest'));
+    angle = mix(angle, -22, weight(bg, 'ask'));
+    // Elbow direction is continuous: behind/below for rest and reaches, and it
+    // turns (towards the camera, bone lengths kept) to sit in front for the chest.
+    drawArm('worker-active', shoulder, workerWrist, WORKER_ARM, mix(1, -1, chest), angle);
+    // The far arm, behind the torso: elbow at her back, hand on the far thigh.
+    attr('worker-rest', 'transform', `translate(${(-dx).toFixed(2)} 0)`);
+    drawArm('worker-rest', workerShoulder(326, 322), { x: 352 + dx, y: 462 }, WORKER_ARM, 1, 40);
+
+    // Near senior hand: on her thigh (elbow out at her side) or the bowl's right rim. Pushing moves
+    // left, never towards a face. On release the hand lifts off in a small arc
+    // and rests just behind the rim.
+    const nearShoulder = lead(elderShoulder(732, 322), f.contact * (1 - .5 * f.release), -1);
+    let elderWrist = { x: 738, y: 460 };
+    const rim = { x: bowlX + 71 + 24 * f.release, y: 386 - 8 * Math.sin(Math.PI * clamp(f.release)) };
     elderWrist = between(elderWrist, rim, f.contact);
-    drawArm('senior-active', elderShoulder(728, 330), elderWrist, [83, 84], -1, mix(169, mix(180, 174, f.release), f.contact), true);
-    // Raised-hand beat: the far hand comes up palm-out in front of the body,
-    // clear of the cardigan and below the face.
-    const elderRest = between({ x: 756, y: 420 }, { x: 680, y: 324 }, raise);
-    drawArm('senior-rest', elderShoulder(798, 331), elderRest, [76, 77], -1, mix(170, 262, raise), true);
+    elderWrist.y -= 12 * f.arcS;
+    const nearAngle = mix(105, mix(180, 174, g.release), g.contact);
+    // The elbow turns from her side (rest) to below the forearm (pushing).
+    drawArm('senior-active', nearShoulder, elderWrist, ELDER_ARM, mix(1, -1, f.contact), nearAngle, true);
+    // Far senior hand: on her thigh, raised palm, a wave-off flick, or a point
+    // at the television behind her.
+    const raise = weight(bw, 'raise-hand'), wave = weight(bw, 'wave-off'), tv = weight(bw, 'point-tv');
+    const flick = Math.sin(beatElapsed * Math.PI * 2 / 460) * wave;
+    const farShoulder = lead(elderShoulder(794, 322), Math.max(raise, wave, tv), -1);
+    let farWrist = { x: 786, y: 460 };
+    farWrist = between(farWrist, { x: 680, y: 324 }, raise);
+    farWrist = between(farWrist, { x: 692 + 7 * flick, y: 340 }, wave);
+    farWrist = between(farWrist, { x: 870, y: 300 }, tv);
+    farWrist.x -= 14 * arc(raise) + 12 * arc(wave);
+    let farAngle = 80;
+    farAngle = mix(farAngle, 262, weight(bg, 'raise-hand'));
+    farAngle = mix(farAngle, 248 + 20 * Math.sin((beatElapsed - ANGLE_LAG) * Math.PI * 2 / 460), weight(bg, 'wave-off'));
+    farAngle = mix(farAngle, 298, weight(bg, 'point-tv'));
+    // Pointing beside her shoulder keeps the elbow down; the continuous bend
+    // reads as the elbow turning towards the camera, with bone lengths kept.
+    drawArm('senior-rest', farShoulder, farWrist, ELDER_ARM, mix(-1, 1, tv), farAngle, true);
   }
 
   function setView(nextView, options = {}) {
@@ -535,51 +605,72 @@ export function mountTourScene(container) {
     view = next;
     initialized = true;
     // Beats play once per animated shot; snaps (rewind, seeking, language) skip them.
-    beat = snap ? 'none' : next.beat;
+    beats = snap ? [] : next.beat;
     beatElapsed = 0;
     if (changed || snap || motionChanged) {
       start = { ...frame };
       target = nextTarget;
-      elapsed = snap ? DURATION : 0;
+      shove = target.contact > 0 && target.away + target.push > start.away + start.push + .01;
+      moves = { worker: moved(start, target, ['open', 'listen', 'withdraw', 'setup', 'workerLean']),
+        senior: moved(start, target, ['contact']) };
+      spans = { worker: span(moved(start, target, WORKER_KEYS)),
+        senior: SENIOR_PACE * span(moved(start, target, SENIOR_KEYS)) };
+      spans.total = Math.max(spans.worker, spans.senior);
+      elapsed = snap ? spans.total + ANGLE_LAG : 0;
       if (snap) frame = { ...target };
+      angles = { ...frame };
       render();
     }
     accessibility();
   }
 
+  // Pose at ms into the current transition. Each person runs on their own
+  // duration; posture leads and hands follow.
+  function sample(ms) {
+    const pw = clamp(ms / spans.worker), ps = clamp(ms / spans.senior), pa = clamp(ms / spans.total);
+    const out = {};
+    for (const key of Object.keys(target)) {
+      const t = WORKER_KEYS.includes(key) ? pw : SENIOR_KEYS.includes(key) ? ps : pa;
+      out[key] = mix(start[key], target[key], ease(t));
+    }
+    for (const key of ['back', 'workerLean']) out[key] = mix(start[key], target[key], settle(phase(pw, 0, .8)));
+    for (const key of ['recoil', 'gaze', 'down']) out[key] = mix(start[key], target[key], settle(phase(ps, 0, .8)));
+    for (const key of HANDS) out[key] = mix(start[key], target[key], settle(phase(pw, .12, 1)));
+    out.arcW = moves.worker * Math.sin(Math.PI * phase(pw, .12, 1));
+    out.arcS = moves.senior * Math.sin(Math.PI * ps);
+    // Reach the rim, shove quickly, let the bowl glide to rest, then let go.
+    // Recoil follows the shove: push it away, then turn away.
+    if (shove) {
+      const reach = ease(phase(ps, 0, .28));
+      const travel = easeOut(phase(ps, .24, .9));
+      out.contact = mix(start.contact, target.contact, reach);
+      out.away = mix(start.away, target.away, travel);
+      out.push = mix(start.push, target.push, travel);
+      out.release = ps < .58 ? start.release * (1 - reach) : target.release * ease(phase(ps, .58, .96));
+      out.thrust = Math.sin(Math.PI * phase(ps, .18, .75));
+      out.recoil = mix(start.recoil, target.recoil, settle(phase(ps, .45, 1)));
+      out.arcS = Math.max(moves.senior, 1 - start.contact) * Math.sin(Math.PI * phase(ps, 0, .28));
+    }
+    if (target.withdraw + target.back > start.withdraw + start.back + .01) {
+      out.sway = Math.sin(Math.PI * phase(pw, .05, .9));
+    }
+    if (target.setup > start.setup) {
+      for (const key of ['setup', 'open', 'listen', 'withdraw']) {
+        out[key] = mix(start[key], target[key], smooth(phase(pw, 0, .35)));
+      }
+      out.spoon = mix(start.spoon, target.spoon, smooth(phase(pw, .35, 1)));
+    }
+    return out;
+  }
+
   function tick(deltaMs) {
     if (destroyed || !Number.isFinite(deltaMs) || deltaMs <= 0) return;
     if (!reducedMotion) clock = (clock + deltaMs) % 1e9;
-    if (beat !== 'none') beatElapsed = Math.min(BEAT_MS, beatElapsed + deltaMs);
-    if (elapsed < DURATION) {
-      elapsed = Math.min(DURATION, elapsed + deltaMs);
-      const progress = elapsed / DURATION;
-      const t = ease(progress);
-      frame = Object.fromEntries(Object.keys(target).map(key => [key, mix(start[key], target[key], t)]));
-      for (const key of BODY) frame[key] = mix(start[key], target[key], settle(phase(progress, 0, .8)));
-      for (const key of HANDS) frame[key] = mix(start[key], target[key], settle(phase(progress, .12, 1)));
-      // Reach the rim, shove quickly, let the bowl glide to rest, then let go.
-      // Interruptions still start from the last rendered pose; repeated identical
-      // views do not restart it.
-      if (target.contact > 0 && target.away + target.push > start.away + start.push + .01) {
-        const reach = ease(phase(progress, 0, .28));
-        const shove = easeOut(phase(progress, .24, .9));
-        frame.contact = mix(start.contact, target.contact, reach);
-        frame.away = mix(start.away, target.away, shove);
-        frame.push = mix(start.push, target.push, shove);
-        frame.release = progress < .58 ? start.release * (1 - reach) : target.release * ease(phase(progress, .58, .96));
-        frame.thrust = Math.sin(Math.PI * phase(progress, .18, .75));
-      }
-      if (target.withdraw + target.back > start.withdraw + start.back + .01) {
-        frame.sway = Math.sin(Math.PI * phase(progress, .05, .9));
-      }
-      if (target.setup > start.setup) {
-        frame.setup = mix(start.setup, target.setup, smooth(clamp(progress / .35)));
-        frame.open = mix(start.open, target.open, smooth(clamp(progress / .35)));
-        frame.listen = mix(start.listen, target.listen, smooth(clamp(progress / .35)));
-        frame.withdraw = mix(start.withdraw, target.withdraw, smooth(clamp(progress / .35)));
-        frame.spoon = mix(start.spoon, target.spoon, smooth(clamp((progress - .35) / .65)));
-      }
+    if (beats.length) beatElapsed = Math.min(beatsEnd(beats) + ANGLE_LAG, beatElapsed + deltaMs);
+    if (elapsed < spans.total + ANGLE_LAG) {
+      elapsed = Math.min(spans.total + ANGLE_LAG, elapsed + deltaMs);
+      frame = sample(elapsed);
+      angles = sample(elapsed - ANGLE_LAG);
     }
     render();
   }

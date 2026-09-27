@@ -9,7 +9,7 @@ const step = (id, kind, duration, text, scene, options = {}) => ({
   id, kind, speaker: null, text, action: null, duration, view: scene,
   cutaway: null, ...options,
 });
-const refusal = () => view({ mood: 'resistant', bowl: 'away', gesture: 'push-bowl', push: 0.3, beat: 'raise-hand' });
+const refusal = () => view({ mood: 'resistant', bowl: 'away', gesture: 'push-bowl', push: 0.3, beat: 'wave-off' });
 const pause = () => view({ mood: 'settled', bowl: 'away' });
 
 export const OVERVIEW = {
@@ -40,10 +40,10 @@ export const OVERVIEW = {
     step('overview-hello', 'dialogue', 4000, copy(
       'Hello Ms Tan, I’m Hui Lin. Shall I leave it here?',
       '陈女士，您好，我是慧琳。要把碗留在这里吗？'),
-    view({ mood: 'resistant', bowl: 'away', gesture: 'listen', beat: 'ask' }), { speaker: 'Hui Lin' }),
+    view({ mood: 'resistant', bowl: 'away', gesture: 'listen', beat: ['chest', 'ask'] }), { speaker: 'Hui Lin' }),
     step('overview-programme', 'dialogue', 4000, copy(
       'Yes. I want to finish this programme.', '是的。我想看完这个节目。'),
-    view({ bowl: 'away' }), { speaker: 'Ms Tan' }),
+    view({ bowl: 'away', beat: 'point-tv' }), { speaker: 'Ms Tan' }),
     step('overview-ask-return', 'dialogue', 4000, copy(
       'Of course. Shall I come back afterwards?', '当然。等节目结束后我再来，好吗？'),
     view({ bowl: 'away', gesture: 'withdraw' }), {
