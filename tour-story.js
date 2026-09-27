@@ -3,7 +3,7 @@
 const copy = (en, zh) => ({ en, zh });
 const field = (label, value) => ({ label, value });
 const record = (title, fields) => ({
-  label: copy('Fictional record', '虚构记录'), title, fields,
+  label: copy('Example record', '示例记录'), title, fields,
 });
 const step = (id, kind, text, view, options = {}) => ({
   id, kind, speaker: null, text, action: null, duration: 11000, view, ...options,
@@ -16,16 +16,16 @@ export const CHAPTERS = [
     focus: copy('Hui Lin · A meal in the lounge', '慧琳 · 休息厅的一餐'),
     steps: [
       step('intro-welcome', 'narration', copy(
-        'Amiya Care Practice follows Hui Lin, a fictional care worker. Guided demonstration · Fictional people and records · No live coaching or backend.',
-        'Amiya Care Practice 跟随虚构照护员慧琳展开。导览演示 · 人物与记录均为虚构 · 无实时指导或后端服务。'),
+        'Amiya Care Practice · Hui Lin meets Ms Tan for a meal in the shared lounge.',
+        'Amiya Care Practice · 慧琳来到公共休息厅，陪陈女士安排用餐。'),
       { senior: 'tan', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }),
       step('intro-handover', 'narration', copy(
-        'Fictional handover: address her as Ms Tan; speak English. She ran a food stall, values independence and enjoys television. She sits in a supported chair in the shared lounge; background noise continues.',
-        '虚构交接：称呼她“陈女士”，使用英语。她曾经营食摊，重视独立，也喜欢看电视。她坐在公共休息厅有支撑的椅子上，周围仍有背景声。'),
-      { senior: 'tan', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }, { duration: 14000 }),
+        'Handover: Ms Tan has mild dementia; she may not recall earlier meals. Speak English. She ran a food stall, values independence and enjoys television. She sits in a supported chair in the shared lounge.',
+        '交接：陈女士有轻度失智症，可能不记得先前是否用过餐。使用英语。她曾经营食摊，重视独立，也喜欢看电视。她坐在公共休息厅有支撑的椅子上。'),
+      { senior: 'tan', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }, { duration: 17000 }),
       step('intro-plan', 'narration', copy(
-        'Fictional plan CP-M02: documented soft food, seated support and permission-based setup help. Respect refusal; document and follow the agreed return or support procedure. Full details are in the care-plan panel.',
-        '虚构计划 CP-M02：已记录的软食、坐姿支撑，以及征得同意后的摆放协助。尊重拒绝，记录并遵循约定的返回或求助流程。完整内容见照护计划面板。'),
+        'CP-M02: soft food, seated support and setup help with permission. Respect refusal; document the agreed return or support needed.',
+        'CP-M02：软食、坐姿支撑，以及征得同意后的摆放协助。尊重拒绝，记录约定的返回安排或所需支持。'),
       { senior: 'tan', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'tv', tv: true, gesture: 'listen' }, {
         duration: 14000,
         action: copy('Hui Lin settles at eye level, keeping a respectful distance from the table.', '慧琳在与陈女士视线平齐的位置安顿下来，与桌子保持距离。'),
@@ -74,11 +74,15 @@ export const CHAPTERS = [
     focus: copy('Hui Lin and Ms Tan · Current wishes', '慧琳与陈女士 · 此刻的意愿'),
     steps: [
       step('returning-transition', 'narration', copy(
-        'Later that day · The programme has ended. Hui Lin checks the fictional note: return after the programme. That earlier agreement is not permission to assist now.',
-        '当天稍后 · 节目已结束。慧琳查看虚构记录：节目结束后返回。先前的约定并不代表现在已获得协助许可。'),
+        'Later that day · The programme has ended. Hui Lin checks the note: return after the programme. That earlier agreement is not permission to assist now.',
+        '当天稍后 · 节目已结束。慧琳查看记录：节目结束后返回。先前的约定并不代表现在已获得协助许可。'),
       { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'back', gaze: 'bowl', tv: true, gesture: 'none' }),
+      step('returning-uncertain', 'dialogue', copy(
+        'Did we arrange something? I don’t remember. Please don’t rush me.',
+        '我们约好什么了吗？我不记得了。请别催我。'),
+      { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'back', gaze: 'worker', tv: true, gesture: 'open-palm' }, { speaker: 'Ms Tan', duration: 9000 }),
       step('returning-question', 'dialogue', copy(
-        'Hello Ms Tan, it’s Hui Lin again. What would you like now?', '陈女士，您好，我是慧琳。您现在想怎样安排？'),
+        'Hello Ms Tan, it’s Hui Lin. There’s no rush. What would you like now?', '陈女士，您好，我是慧琳。不着急。您现在想怎样安排？'),
       { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'back', gaze: 'worker', tv: true, gesture: 'listen' }, { speaker: 'Hui Lin', duration: 9000 }),
       step('returning-wishes', 'dialogue', copy(
         'I’d like to eat by myself. Please set the bowl and spoon within reach. Leave the television on.',
@@ -98,72 +102,72 @@ export const CHAPTERS = [
   {
     id: 'check',
     title: copy('Unfamiliar readiness check', '陌生情境检查'),
-    focus: copy('Hui Lin and Mr Lim · Scripted example of a check', '慧琳与林先生 · 检查的脚本示例'),
+    focus: copy('Hui Lin and Mr Lim · An unfamiliar concern', '慧琳与林先生 · 陌生的担忧'),
     steps: [
       step('check-transition', 'narration', copy(
-        'At a later check session · Hui Lin meets Mr Lim. This scripted example of a check plays without coaching. It provides no evidence about the visitor’s competence.',
-        '稍后的检查环节 · 慧琳认识了林先生。这是没有指导提示的检查脚本示例，不提供任何关于访客能力的证据。'),
+        'At a later check session · Hui Lin meets Mr Lim for the first time at lunch.',
+        '稍后的检查环节 · 慧琳在午餐时第一次见到林先生。'),
       { senior: 'lim', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'bowl', tv: false, gesture: 'none' }),
       step('check-concern', 'dialogue', copy(
-        'I don’t recognise this food. Please find out what it is before I decide.', '我不认识这道食物。请先弄清楚是什么，再让我决定。'),
+        'Did someone put something in this?', '有人往这里面加了什么吗？'),
       { senior: 'lim', mood: 'resistant', bowl: 'near', worker: 'near', gaze: 'bowl', tv: false, gesture: 'open-palm' }, { speaker: 'Mr Lim' }),
       step('check-response', 'dialogue', copy(
-        'Hello Mr Lim, I’m Hui Lin. I don’t know yet. May I ask the appropriate staff to identify it and check what support you want?',
-        '林先生，您好，我是慧琳。我现在还不清楚。我可以请负责的同事确认食物，并了解您希望获得什么协助吗？'),
+        'Hello Mr Lim, I’m Hui Lin. I don’t know what’s in it. Shall we check with the responsible staff?',
+        '林先生，您好，我是慧琳。我不清楚里面有什么。我们一起请负责的同事确认，好吗？'),
       { senior: 'lim', mood: 'neutral', bowl: 'near', worker: 'near', gaze: 'worker', tv: false, gesture: 'listen' }, { speaker: 'Hui Lin' }),
       step('check-choice', 'dialogue', copy(
         'Yes, find out for me. Then I’ll choose. Please leave the bowl where it is.', '好，请帮我问清楚。我之后再选。请把碗留在原处。'),
       { senior: 'lim', mood: 'settled', bowl: 'near', worker: 'near', gaze: 'worker', tv: false, gesture: 'none' }, { speaker: 'Mr Lim', duration: 9000 }),
       step('check-submit', 'narration', copy(
-        'Hui Lin pauses the meal and seeks staff support to identify the food before Mr Lim decides. The scripted encounter is submitted for human review.',
-        '慧琳暂停用餐安排，请同事协助确认食物，再由林先生决定。这段脚本情境已提交人工审阅。'),
+        'Hui Lin pauses the meal and seeks staff support before Mr Lim decides. The encounter is submitted for human review.',
+        '慧琳暂停用餐安排，请同事协助确认，再由林先生决定。这次情境检查已提交人工审阅。'),
       { senior: 'lim', mood: 'settled', bowl: 'near', worker: 'back', gaze: 'bowl', tv: false, gesture: 'withdraw' }),
     ],
   },
   {
     id: 'review',
     title: copy('Human review', '人工审阅'),
-    focus: copy('Behind the scenes · Same guided-tour frame', '幕后片段 · 同一导览画面'),
+    focus: copy('Manager nomination · Reviewer decision', '经理提名 · 审阅人决定'),
     steps: [
       step('review-nomination', 'cutaway', copy(
-        'Behind the scenes · Fictional centre manager cutaway. The tour stays in the same frame.', '幕后 · 虚构中心经理片段。导览保持在同一画面中。'),
+        'Centre manager · Mr Koh nominates a reviewer.', '中心经理 · 许经理指定审阅人。'),
       { senior: 'lim', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'bowl', tv: false, gesture: 'none' }, {
         cutaway: 'manager', duration: 14000,
         record: record(copy('Reviewer nomination', '审阅人提名'), [
-          field(copy('Manager action', '经理的行动'), copy('Mr Koh nominates care lead Aisha Rahman to review Hui Lin’s submitted check. Both names are fictional.', '许经理指定照护负责人 Aisha Rahman 审阅慧琳提交的检查。姓名均为虚构。')),
+          field(copy('Manager action', '经理的行动'), copy('Mr Koh nominates care lead Aisha Rahman to review Hui Lin’s submitted check.', '许经理指定照护负责人 Aisha Rahman 审阅慧琳提交的检查。')),
         ]),
       }),
       step('review-excerpts', 'cutaway', copy(
-        'Behind the scenes · Fictional nominated reviewer. Selected excerpts are visible only in this cutaway.', '幕后 · 虚构的指定审阅人。节选仅在此片段中展示。'),
+        'Nominated reviewer · Aisha Rahman reads the encounter.', '指定审阅人 · Aisha Rahman 阅读情境记录。'),
       { senior: 'lim', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'bowl', tv: false, gesture: 'none' }, {
         cutaway: 'reviewer', duration: 23000,
         record: record(copy('Submitted check excerpts', '已提交检查的节选'), [
-          field(copy('Mr Lim · Excerpt', '林先生 · 节选'), copy('I don’t recognise this food. Please find out what it is before I decide.', '我不认识这道食物。请先弄清楚是什么，再让我决定。')),
-          field(copy('Hui Lin · Excerpt', '慧琳 · 节选'), copy('Hello Mr Lim, I’m Hui Lin. I don’t know yet. May I ask the appropriate staff to identify it and check what support you want?', '林先生，您好，我是慧琳。我现在还不清楚。我可以请负责的同事确认食物，并了解您希望获得什么协助吗？')),
+          field(copy('Mr Lim · Excerpt', '林先生 · 节选'), copy('Did someone put something in this?', '有人往这里面加了什么吗？')),
+          field(copy('Hui Lin · Excerpt', '慧琳 · 节选'), copy('Hello Mr Lim, I’m Hui Lin. I don’t know what’s in it. Shall we check with the responsible staff?', '林先生，您好，我是慧琳。我不清楚里面有什么。我们一起请负责的同事确认，好吗？')),
         ]),
       }),
       step('review-decision', 'cutaway', copy(
-        'Fictional reviewer decision · A human reviewer selects the next stage.', '虚构审阅决定 · 由人工审阅人选择下一阶段。'),
+        'Reviewer decision · Aisha selects supervised practice.', '审阅决定 · Aisha 选择督导下的实践。'),
       { senior: 'lim', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'bowl', tv: false, gesture: 'none' }, {
         cutaway: 'reviewer', duration: 23000,
         record: record(copy('Example readiness decision', '准备情况决定示例'), [
-          field(copy('Available decisions', '可选决定'), copy('More practice · Further support · Supervised workplace practice', '更多练习 · 进一步支持 · 督导下的工作实践')),
+          field(copy('Responses considered', '比较的回应'), copy('Reassure: “It’s the usual lunch.” Or acknowledge uncertainty and check with staff.', '安慰：“这是平常的午餐。”或承认不确定，请同事确认。')),
           field(copy('Selected', '选定结果'), copy('Ready for supervised workplace practice', '可进入督导下的工作实践')),
-          field(copy('Reason and limit', '理由与范围'), copy('Hui Lin acknowledged uncertainty and sought support without taking over Mr Lim’s choice. Workplace observation is still needed.', '慧琳承认不确定，并寻求支持，同时保留林先生的选择权。仍需在工作场所进行观察。')),
+          field(copy('Reason · CP-M02', '理由 · CP-M02'), copy('Checking rather than reassuring without evidence follows CP-M02: pause, seek responsible staff support, preserve choice. Workplace observation remains needed.', '确认而非无依据地安慰，符合 CP-M02：暂停、寻求负责同事的支持、保留选择权。仍需工作场所观察。')),
         ]),
       }),
       step('review-return', 'narration', copy(
-        'Back to Hui Lin’s story · The fictional decision opens supervised practice. The practice coach does not grant clearance.', '回到慧琳的故事 · 这项虚构决定允许进入督导下的实践。练习指导不授予工作资格。'),
+        'Hui Lin begins supervised practice following Aisha’s review.', '经 Aisha 审阅后，慧琳开始督导下的实践。'),
       { senior: 'tan', mood: 'neutral', bowl: 'near', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }, { duration: 9000 }),
     ],
   },
   {
     id: 'shift',
     title: copy('After-shift difficulty', '班后报告困难'),
-    focus: copy('Hui Lin · Fictional workplace episode', '慧琳 · 虚构工作片段'),
+    focus: copy('Hui Lin · A busy supervised shift', '慧琳 · 繁忙的督导班次'),
     steps: [
       step('shift-transition', 'narration', copy(
-        'Later · A busy lunch during a supervised shift. This fictional workplace episode is separate from the practice simulation.', '稍后 · 督导下的一个繁忙午餐班次。这段虚构工作情节与练习模拟分开。'),
+        'Later · A busy lunch during a supervised shift. Hui Lin is feeling hurried.', '稍后 · 督导下的一个繁忙午餐班次。慧琳感到有些仓促。'),
       { senior: 'tan', mood: 'neutral', bowl: 'near', worker: 'near', gaze: 'tv', tv: true, gesture: 'none' }),
       step('shift-stop', 'dialogue', copy('Please stop asking. I don’t want it now.', '请别再问了。我现在不想吃。'),
       { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'near', gaze: 'tv', tv: true, gesture: 'open-palm' }, { speaker: 'Ms Tan', duration: 9000 }),
@@ -174,7 +178,7 @@ export const CHAPTERS = [
         '繁忙的午餐之后，我意识到陈女士让我停止时，我还是重复了提议。我需要帮助，练习在压力下及时停下来。'),
       { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'withdraw' }, { speaker: 'Hui Lin' }),
       step('shift-difficulty', 'cutaway', copy(
-        'After the supervised shift · Fictional workplace record cutaway. Hui Lin’s report connects the difficulty to support.', '督导班次结束后 · 虚构工作记录片段。慧琳的报告将遇到的困难与后续支持衔接。'),
+        'Workplace record · Hui Lin reports the difficulty and agrees support with her supervisor.', '工作记录 · 慧琳报告困难，并与督导商定支持安排。'),
       { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }, {
         cutaway: 'workplace', duration: 17000,
         record: record(copy('Reported difficulty', '已报告的困难'), [
@@ -190,8 +194,8 @@ export const CHAPTERS = [
     focus: copy('Hui Lin · Practising withdrawal', '慧琳 · 练习退开与暂停'),
     steps: [
       step('refresher-transition', 'narration', copy(
-        'At the next practice session · The proposed service assigns a refusal-focused refresher linked to Hui Lin’s reported difficulty. This is a scripted practice scene.',
-        '下次练习时 · 拟议服务根据慧琳报告的困难，安排针对拒绝的复习。这是脚本练习情境。'),
+        'At the next practice session · A refusal-focused refresher addresses Hui Lin’s reported difficulty: stopping under pressure.',
+        '下次练习时 · 针对拒绝的复习聚焦慧琳报告的困难：在压力下及时停下来。'),
       { senior: 'tan', mood: 'neutral', bowl: 'away', worker: 'near', gaze: 'tv', tv: true, gesture: 'none' }),
       step('refresher-refusal', 'dialogue', copy(
         'No, not now. I said no. Please leave it there until the programme ends.', '不，现在不吃。我已经说过不了。请把它留在那里，等节目结束再说。'),
@@ -200,7 +204,7 @@ export const CHAPTERS = [
         'All right, I’ll stop. I’ll leave it there and come back after the programme, as you asked.', '好的，我停下来。我把它留在那里，按您的意思，节目结束后再来。'),
       { senior: 'tan', mood: 'resistant', bowl: 'away', worker: 'near', gaze: 'tv', tv: true, gesture: 'listen' }, { speaker: 'Hui Lin', duration: 9000 }),
       step('refresher-withdraw', 'action', copy(
-        'Hui Lin respects the repeated refusal and documents the agreed pause under fictional CP-M02.', '慧琳尊重再次表达的拒绝，按虚构计划 CP-M02 记录约定的暂停。'),
+        'Hui Lin respects the repeated refusal and documents the agreed pause under CP-M02.', '慧琳尊重再次表达的拒绝，按 CP-M02 记录约定的暂停。'),
       { senior: 'tan', mood: 'settled', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'withdraw' }, {
         action: copy('Hui Lin moves her hands away from the table and steps back.', '慧琳将双手移离桌边，退后一步。'),
       }),
@@ -213,14 +217,14 @@ export const CHAPTERS = [
   {
     id: 'followup',
     title: copy('Workplace follow-up', '工作场所后续跟进'),
-    focus: copy('Fictional supervised observation · Back to Hui Lin', '虚构督导观察 · 回到慧琳'),
+    focus: copy('Hui Lin · Supervised observation', '慧琳 · 督导观察'),
     steps: [
       step('followup-transition', 'narration', copy(
-        'After a later supervised shift · This observation took place after the refresher. The following fictional record describes completed workplace follow-up.',
-        '更晚的一次督导班次结束后 · 本次观察发生在复习之后。以下虚构记录描述的是已经完成的工作场所跟进。'),
+        'After a later supervised shift · The observation took place after the refresher. Hui Lin and her supervisor discuss the completed follow-up.',
+        '更晚的一次督导班次结束后 · 本次观察发生在复习之后。慧琳与督导讨论已经完成的跟进。'),
       { senior: 'tan', mood: 'settled', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }),
       step('followup-observation', 'cutaway', copy(
-        'Behind the scenes · Fictional reviewer cutaway: simulated workplace follow-up.', '幕后 · 虚构审阅人片段：模拟工作场所跟进。'),
+        'Reviewer · Aisha records the workplace follow-up.', '审阅人 · Aisha 记录工作场所跟进情况。'),
       { senior: 'tan', mood: 'settled', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }, {
         cutaway: 'reviewer', duration: 20000,
         record: record(copy('Completed supervised observation', '已完成的督导观察'), [
@@ -234,8 +238,8 @@ export const CHAPTERS = [
         '我们同意继续在督导下练习。我会继续与督导一起练习，在对方要求时及时停止，尤其是在繁忙的用餐时段。'),
       { senior: 'tan', mood: 'settled', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }, { speaker: 'Hui Lin' }),
       step('followup-ending', 'ending', copy(
-        'This fictional follow-up is completed; further supervised practice was agreed, not automatic clearance. A working service would connect practice, human review and workplace support. Replay or choose a chapter.',
-        '本次虚构跟进已完成；双方同意继续督导练习，并非自动获得资格。实际服务将衔接练习、人工审阅与工作支持。可重播或选择章节。'),
+        'Amiya Care Practice · Follow-up completed. Hui Lin continues supervised practice, with support during busy meals.',
+        'Amiya Care Practice · 跟进已完成。慧琳继续在督导下练习，并在繁忙用餐时段获得支持。'),
       { senior: 'tan', mood: 'settled', bowl: 'away', worker: 'back', gaze: 'tv', tv: true, gesture: 'none' }, { duration: 14000 }),
     ],
   },

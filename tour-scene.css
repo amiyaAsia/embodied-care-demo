@@ -52,12 +52,12 @@
 
 .tour-scene .tour-scene__brow {
   stroke: #777e6d;
-  stroke-width: 2.7px;
+  stroke-width: var(--tour-brow-width, 2.7);
 }
 
 .tour-scene .tour-scene__mouth {
   stroke: #996f5c;
-  stroke-width: 2px;
+  stroke-width: var(--tour-mouth-width, 2);
 }
 
 .tour-scene .tour-scene__arm,

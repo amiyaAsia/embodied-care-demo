@@ -9,7 +9,7 @@ const smooth = t => t * t * (3 - 2 * t);
 const point = p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`;
 const between = (a, b, t) => ({ x: mix(a.x, b.x, t), y: mix(a.y, b.y, t) });
 const DEFAULT_VIEW = Object.freeze({ senior: 'tan', mood: 'neutral', bowl: 'near',
-  worker: 'near', gaze: 'tv', tv: true, gesture: 'none' });
+  worker: 'near', gaze: 'tv', tv: true, gesture: 'none', push: 0, recoil: 0, workerLean: 0 });
 const VALUES = {
   senior: ['tan', 'lim'], mood: ['neutral', 'resistant', 'settled'],
   bowl: ['near', 'away'], worker: ['near', 'back'], gaze: ['tv', 'worker', 'bowl'],
@@ -215,6 +215,7 @@ function senior(id) {
       <g data-part="lim-hair-front"><path d="M718 234L721 207Q730 190 756 190Q781 190 788 210L789 234L783 242L780 216Q756 205 729 216L726 241Z" fill="url(#${id}-hair)"/>
         <path d="M727 205L735 198M739 204L747 197M751 203L759 197M764 204L771 200M775 208L780 205" stroke="#e3e7de" stroke-width="2" stroke-linecap="round"/>
       </g>
+      <g data-part="senior-expression">
       <path d="M741 226Q754 223 767 225M742 230Q754 227 766 230" class="tour-scene__age-line"/>
       <path data-part="senior-brow-left" class="tour-scene__brow"/>
       <path data-part="senior-brow-right" class="tour-scene__brow"/>
@@ -226,6 +227,7 @@ function senior(id) {
       <path d="M751 246L748 259Q753 262 758 259" class="tour-scene__face-line"/>
       <path d="M734 253Q740 257 747 254M762 254Q768 257 775 252M733 261Q734 269 741 271M769 263L767 268M750 283Q758 285 764 281" class="tour-scene__age-line"/>
       <path data-part="senior-mouth" class="tour-scene__mouth"/>
+      </g>
       <path d="M719 244Q724 242 724 251M787 242L786 250" class="tour-scene__skin-line"/>
       <ellipse cx="736" cy="262" rx="6" ry="3" fill="#ca927b" opacity=".19"/>
     </g>
@@ -282,6 +284,11 @@ function normalize(view, previous) {
     if (values.includes(view?.[key])) next[key] = view[key];
   }
   if (typeof view?.tv === 'boolean') next.tv = view.tv;
+  // Optional overview intensities are per-view, not sticky partial updates.
+  // An old seven-field view also clears a preceding overview pose on rewind.
+  for (const key of ['push', 'recoil', 'workerLean']) {
+    next[key] = Number.isFinite(view?.[key]) ? clamp(view[key]) : 0;
+  }
   return next;
 }
 
@@ -290,7 +297,8 @@ function pose(view, spoon = 0) {
     settled: +(view.mood === 'settled'), away: +(view.bowl === 'away'),
     back: +(view.worker === 'back'), gaze: view.gaze === 'tv' ? 1 : view.gaze === 'worker' ? -1 : -.45,
     down: +(view.gaze === 'bowl'), tv: +view.tv,
-    push: +(view.gesture === 'push-bowl'), open: +(view.gesture === 'open-palm'),
+    contact: +(view.gesture === 'push-bowl' || view.push > 0), push: view.push,
+    recoil: view.recoil, workerLean: view.workerLean, open: +(view.gesture === 'open-palm'),
     setup: +(view.gesture === 'setup'), withdraw: +(view.gesture === 'withdraw'),
     listen: +(view.gesture === 'listen'), spoon };
 }
@@ -307,6 +315,12 @@ function color(a, b, t) {
  * The first setView always snaps. Other transitions take 1800ms of supplied ticks.
  * Setup leaves the spoon in reach through subsequent listening/idle views. An
  * immediate view, a different senior, or refusal resets this prop for replay.
+ * Optional push, recoil and workerLean are finite numbers clamped to [0, 1].
+ * Omitted/invalid intensities reset to zero, including on partial updates.
+ * push adds up to 40 SVG units of bowl travel with fingertip contact; recoil
+ * turns the torso/head away and tightens the closed-mouth refusal expression.
+ * workerLean advances the worker's body and hand; back/withdraw gives space.
+ * The host owns dialogue, agreement/revisit meaning and immediate rewinds.
  */
 export function mountTourScene(container) {
   if (!container?.appendChild || !container.ownerDocument) {
@@ -352,26 +366,17 @@ export function mountTourScene(container) {
     const enDesc = `A warm, window-lit shared lounge. Young care worker Hui Lin wears green and sits on a stool to the left. ${name} sits upright in an armchair to the right, ${moodEn}. A low table holds lunch and a separate spoon. ${gestureEn} The bowl is ${view.bowl === 'near' ? 'near the senior' : 'away, towards the centre'}. Hui Lin sits ${view.worker === 'back' ? 'further back' : 'nearby'}. The senior looks towards ${view.gaze === 'tv' ? 'the television' : view.gaze === 'worker' ? 'Hui Lin' : 'the bowl'}. ${view.tv ? 'The television shows an abstract cooking programme.' : 'The television is off.'} Fixed camera; no assisted feeding or spoon entering a mouth.`;
     const zhDesc = `温暖、窗边有植物的共享客厅。年轻女护工慧琳穿绿制服坐在左侧凳子上，${zhName}坐在右侧有靠背与扶手的椅子上，${moodZh}。中间的低餐桌摆着午餐和旁置的勺子。${gestureZh}碗${view.bowl === 'near' ? '靠近长者' : '已向左移到桌子中央'}，慧琳${view.worker === 'back' ? '稍向后退坐' : '坐在旁边'}。长者看向${view.gaze === 'tv' ? '电视' : view.gaze === 'worker' ? '慧琳' : '食物碗'}。${view.tv ? '电视播放抽象厨房烹饪节目。' : '电视已关闭。'}固定镜头，不喂食、不将勺子送入口中。`;
     parts.title.textContent = locale === 'zh' ? `${zh} / ${en}` : `${en} / ${zh}`;
-    parts.description.textContent = locale === 'zh' ? `${zhDesc}\n${enDesc}` : `${enDesc}\n${zhDesc}`;
+    const overviewEn = `${view.push > 0 ? ' The senior pushes the bowl further away.' : ''}${view.recoil > 0 ? ' The senior recoils and turns away with angry brows and a firmly closed mouth.' : ''}${view.workerLean > 0 && view.worker !== 'back' && view.gesture !== 'withdraw' && view.gesture !== 'setup' ? ' Hui Lin leans closer with her hand extended, without touching the senior.' : ''}`;
+    const overviewZh = `${view.push > 0 ? '长者把碗推得更远。' : ''}${view.recoil > 0 ? '长者身体后缩、转头避开，眉头紧皱、嘴巴紧闭。' : ''}${view.workerLean > 0 && view.worker !== 'back' && view.gesture !== 'withdraw' && view.gesture !== 'setup' ? '慧琳前倾靠近并伸手，但不触碰长者。' : ''}`;
+    parts.description.textContent = locale === 'zh' ? `${zhDesc}${overviewZh}\n${enDesc}${overviewEn}` : `${enDesc}${overviewEn}\n${zhDesc}${overviewZh}`;
     parts['programme-label'].textContent = locale === 'zh' ? '烹饪节目' : 'Cooking programme';
     if (locale === 'zh') parts['programme-label'].removeAttribute('textLength');
     else attr('programme-label', 'textLength', 286);
     svg.setAttribute('lang', locale === 'zh' ? 'zh-Hans' : 'en');
   }
 
-  function drawArm(name, shoulder, wrist, lengths, bend, handAngle, elder = false, relaxed = 0) {
+  function drawArm(name, shoulder, wrist, lengths, bend, handAngle, elder = false) {
     const rig = armIK(shoulder, wrist, ...lengths, bend);
-    if (relaxed > 0) {
-      // Blend joint angles, not elbow positions, when turning a palm upwards.
-      // Both bones retain their length throughout the change of elbow branch.
-      const other = armIK(shoulder, wrist, ...lengths, -bend);
-      const angle = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
-      const blend = (a, b) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * relaxed;
-      const upper = blend(angle(shoulder, rig.elbow), angle(shoulder, other.elbow));
-      const lower = blend(angle(rig.elbow, rig.wrist), angle(other.elbow, other.wrist));
-      rig.elbow = { x: shoulder.x + Math.cos(upper) * lengths[0], y: shoulder.y + Math.sin(upper) * lengths[0] };
-      rig.wrist = { x: rig.elbow.x + Math.cos(lower) * lengths[1], y: rig.elbow.y + Math.sin(lower) * lengths[1] };
-    }
     const { elbow, wrist: actual } = rig;
     attr(name, 'data-wrist', point(actual));
     attr(name, 'data-elbow', point(elbow));
@@ -394,8 +399,10 @@ export function mountTourScene(container) {
     const breath = reducedMotion ? 0 : Math.sin(clock * Math.PI * 2 / 4400) * .85;
     const elderBreath = reducedMotion ? 0 : Math.sin(clock * Math.PI * 2 / 4900 + .8) * .65;
     // All offsets are subject motion. The viewBox and room never move.
-    const back = Math.max(f.back, f.withdraw * .55), dx = -43 * back;
-    const lean = f.setup * 12 + f.listen * .7 - f.withdraw * .6;
+    const back = Math.max(f.back, f.withdraw * .55);
+    const pressure = f.workerLean * (1 - Math.max(f.back, f.withdraw, f.setup));
+    const dx = -43 * back + 20 * pressure;
+    const lean = f.setup * 12 + f.listen * .7 - f.withdraw * .6 + 18 * pressure;
     const upperBody = `translate(0 ${breath.toFixed(2)}) rotate(${lean.toFixed(2)} 350 425)`;
     const workerShoulder = (x, y) => {
       const radians = lean * Math.PI / 180;
@@ -405,8 +412,21 @@ export function mountTourScene(container) {
     attr('worker-base', 'transform', `translate(${dx.toFixed(2)} 0)`);
     attr('worker-torso', 'transform', upperBody);
     attr('worker-head', 'transform', `${upperBody} rotate(${(f.listen * 2.5 - f.setup * 9).toFixed(2)} 352 281)`);
-    attr('senior-torso', 'transform', `translate(0 ${elderBreath.toFixed(2)})`);
-    attr('senior-head', 'transform', `translate(${(f.gaze * 2.5).toFixed(2)} ${elderBreath.toFixed(2)}) rotate(${(f.gaze * 2 + f.down * 3).toFixed(2)} 755 284)`);
+    // Rotate about the seated hips. Shoulders use the very same rigid transform;
+    // the arm solver retains its original bone lengths even at maximum recoil.
+    const elderLean = 10 * f.recoil;
+    const elderBody = `translate(0 ${elderBreath.toFixed(2)}) rotate(${elderLean.toFixed(2)} 760 425)`;
+    const elderShoulder = (x, y) => {
+      const radians = elderLean * Math.PI / 180;
+      return { x: 760 + (x - 760) * Math.cos(radians) - (y - 425) * Math.sin(radians),
+        y: 425 + (x - 760) * Math.sin(radians) + (y - 425) * Math.cos(radians) + elderBreath };
+    };
+    attr('senior-torso', 'transform', elderBody);
+    attr('senior-head', 'transform', `${elderBody} translate(${(f.gaze * 2.5).toFixed(2)} 0) rotate(${(f.gaze * 2 + f.down * 3 + 12 * f.recoil).toFixed(2)} 755 284)`);
+    // Facial features shift towards the far cheek for a readable turn, rather
+    // than merely changing eye direction. No body or limb is scaled.
+    attr('senior-expression', 'transform', `translate(${(6 * f.recoil).toFixed(2)} 0)`);
+    attr('senior-expression', 'style', `--tour-brow-width:${2.7 + f.recoil};--tour-mouth-width:${2 + .7 * f.recoil}`);
     for (const suffix of ['back', 'front']) {
       attr(`tan-hair-${suffix}`, 'opacity', 1 - f.lim);
       attr(`lim-hair-${suffix}`, 'opacity', f.lim);
@@ -414,11 +434,11 @@ export function mountTourScene(container) {
     attr('cloth-start', 'stop-color', color([139, 159, 138], [113, 143, 145], f.lim));
     attr('cloth-middle', 'stop-color', color([180, 192, 163], [158, 181, 179], f.lim));
     attr('cloth-end', 'stop-color', color([141, 159, 136], [111, 142, 143], f.lim));
-    const anger = f.resistant;
+    const anger = Math.max(f.resistant, f.recoil);
     attr('senior-brow-left', 'd', `M735 ${238 - anger * 2}Q742 ${234 + anger} 748 ${237 + anger * 3}`);
     attr('senior-brow-right', 'd', `M761 ${237 + anger * 3}Q768 ${234 + anger} 775 ${238 - anger * 2}`);
-    attr('senior-mouth', 'd', `M744 274Q754 ${272 - anger * 3 + f.settled * 5} 765 273`);
-    attr('senior-pupils', 'transform', `translate(${(f.gaze * 2.6).toFixed(2)} ${(f.down * 1.7).toFixed(2)})`);
+    attr('senior-mouth', 'd', `M744 274Q754 ${272 - anger * 3 + f.settled * 5 * (1 - f.recoil)} 765 273`);
+    attr('senior-pupils', 'transform', `translate(${mix(f.gaze * 2.6, 3, f.recoil).toFixed(2)} ${(f.down * 1.7 * (1 - f.recoil)).toFixed(2)})`);
     const blink = (period, offset) => {
       if (reducedMotion) return 1;
       const t = (clock + offset) % period;
@@ -426,9 +446,11 @@ export function mountTourScene(container) {
     };
     const eyelids = (name, cy, openness) => attr(name, 'transform', `translate(0 ${cy}) scale(1 ${openness.toFixed(3)}) translate(0 ${-cy})`);
     eyelids('worker-eyes', 244, blink(4670, 1100));
-    eyelids('senior-eyes', 246, blink(5380, 2900));
+    eyelids('senior-eyes', 246, blink(5380, 2900) * (1 - .25 * f.recoil));
     attr('programme', 'opacity', f.tv);
-    const bowlX = mix(632, 566, f.away);
+    // Maximum travel keeps the whole bowl on the tabletop and the contact wrist
+    // within the 83 + 84 arm reach, including full recoil and breathing.
+    const bowlX = mix(632, 566, f.away) - 40 * f.push;
     const spoonX = mix(531, 580, f.spoon);
     attr('bowl', 'transform', `translate(${bowlX.toFixed(2)} 388)`);
     attr('spoon', 'transform', `translate(${spoonX.toFixed(2)} 417) rotate(-8)`);
@@ -438,18 +460,27 @@ export function mountTourScene(container) {
     workerWrist = between(workerWrist, { x: 510 + dx, y: 355 }, f.open);
     workerWrist = between(workerWrist, { x: 493 + dx, y: 390 }, f.listen);
     workerWrist = between(workerWrist, { x: spoonX - 28, y: 410 }, f.setup);
+    // Pressure keeps an open hand below the chest, beside the bowl's left rim.
+    // Stop fingertips short of the bowl even at maximum push; do not raise the
+    // wrist towards the face when the leaned shoulder approaches the target.
+    // Returning to back/withdraw lowers the hand to the lap with the body retreat.
+    workerWrist = between(workerWrist, { x: Math.min(500 + dx, bowlX - 84), y: 388 }, pressure);
     workerWrist = between(workerWrist, { x: 372 + dx, y: 413 }, f.withdraw);
     let angle = mix(22, -25, f.open);
     angle = mix(angle, -10, f.listen);
     angle = mix(angle, 0, f.setup);
+    angle = mix(angle, -8, pressure);
     angle = mix(angle, 36, f.withdraw);
-    drawArm('worker-active', shoulder, workerWrist, [96, 104], -1, angle, false, clamp(f.open + f.listen));
+    // Keep the same low-elbow IK branch for every worker gesture, including
+    // intermediate listen/pressure frames. Blending opposite branches folds the
+    // upper arm across the face and makes the wrist leave its tabletop target.
+    drawArm('worker-active', shoulder, workerWrist, [96, 104], 1, angle);
     drawArm('worker-rest', workerShoulder(323, 330), { x: 355 + dx, y: 419 }, [78, 76], 1, 18);
     let elderWrist = { x: 719, y: 407 };
     // Fingertips meet the bowl's right rim; pushing moves left, never towards a face.
-    elderWrist = between(elderWrist, { x: bowlX + 71, y: 386 }, f.push);
-    drawArm('senior-active', { x: 728, y: 330 + elderBreath }, elderWrist, [83, 84], -1, mix(169, 180, f.push), true);
-    drawArm('senior-rest', { x: 798, y: 331 + elderBreath }, { x: 756, y: 420 }, [76, 77], -1, 170, true);
+    elderWrist = between(elderWrist, { x: bowlX + 71, y: 386 }, f.contact);
+    drawArm('senior-active', elderShoulder(728, 330), elderWrist, [83, 84], -1, mix(169, 180, f.contact), true);
+    drawArm('senior-rest', elderShoulder(798, 331), { x: 756, y: 420 }, [76, 77], -1, 170, true);
   }
 
   function setView(nextView, options = {}) {
@@ -460,7 +491,7 @@ export function mountTourScene(container) {
     if (typeof options.reducedMotion === 'boolean') reducedMotion = options.reducedMotion;
     const snap = first || !!options.immediate || reducedMotion;
     const resetSpoon = first || options.immediate || next.senior !== view.senior ||
-      next.gesture === 'push-bowl' || next.bowl === 'away';
+      next.gesture === 'push-bowl' || next.bowl === 'away' || next.push > 0 || next.recoil > 0;
     const spoon = next.gesture === 'setup' ? 1 : resetSpoon ? 0 : target.spoon;
     const nextTarget = pose(next, spoon);
     const changed = Object.keys(nextTarget).some(key => nextTarget[key] !== target[key]);
@@ -486,9 +517,10 @@ export function mountTourScene(container) {
       // Establish contact first, then slide the object. Interruptions still start
       // from the last rendered pose; repeated identical views do not restart it.
       const progress = elapsed / DURATION;
-      if (target.push > start.push) {
-        frame.push = mix(start.push, target.push, smooth(clamp(progress / .3)));
+      if (target.contact > start.contact) {
+        frame.contact = mix(start.contact, target.contact, smooth(clamp(progress / .3)));
         frame.away = mix(start.away, target.away, smooth(clamp((progress - .3) / .7)));
+        frame.push = mix(start.push, target.push, smooth(clamp((progress - .3) / .7)));
       }
       if (target.setup > start.setup) {
         frame.setup = mix(start.setup, target.setup, smooth(clamp(progress / .35)));

@@ -24,12 +24,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist
-          for asset in index.html tour.css tour-scene.css tour-app.js tour-player.js tour-story.js tour-scene.js; do
+          mkdir -p dist/assets
+          for asset in index.html tour.css tour-scene.css tour-app.js tour-player.js tour-story.js overview-story.js tour-scene.js assets/amiya-logo.png; do
             test -s "$asset"
             cp "$asset" "dist/$asset"
           done
-          for script in tour-app.js tour-player.js tour-story.js tour-scene.js; do
+          for script in tour-app.js tour-player.js tour-story.js overview-story.js tour-scene.js; do
             node --input-type=module --check < "$script"
           done
       - uses: actions/upload-pages-artifact@v3
