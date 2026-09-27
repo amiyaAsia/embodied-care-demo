@@ -6,7 +6,7 @@ This repository is the **public static publishing target**, not the application 
 
 ## Published experience
 
-A 79.5-second overview leads with two contrasting responses to the same refusal, an explicit rewind, specific coach feedback, human review and a difficulty-to-refresher loop. It ends without automatically entering the separately labelled eight-chapter walkthrough. Both sections have independent title cards, progress and playback positions, with a persistent switcher.
+A 55.5-second overview opens on a refusal and shows two contrasting responses to it, an explicit rewind, specific coach feedback, a human review of an unseen case and a difficulty-to-refresher loop. It ends without automatically entering the separately labelled eight-chapter walkthrough. Both sections have independent title cards, progress and playback positions, with a persistent switcher.
 
 The longer story follows care worker Hui Lin through person-centred mealtime practice, a returning encounter, an unfamiliar suspicion check, human review, an after-shift difficulty, a targeted refresher and supervised workplace follow-up. Ms Tan has mild dementia and does not recall the earlier agreement; Hui Lin checks current wishes rather than correcting her memory.
 
